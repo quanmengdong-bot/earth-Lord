@@ -83,7 +83,7 @@ struct SupabaseTestView: View {
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding()
-                        .onChange(of: logMessages.count) { _ in
+                        .onChange(of: logMessages.count) {
                             if let lastIndex = logMessages.indices.last {
                                 withAnimation {
                                     proxy.scrollTo(lastIndex, anchor: .bottom)
