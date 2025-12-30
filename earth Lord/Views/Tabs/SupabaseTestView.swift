@@ -9,9 +9,12 @@ import SwiftUI
 import Supabase
 
 // MARK: - Supabase Client 初始化
+let supabaseURL = "https://uxkyrcyyuxtvgasqplua.supabase.co"
+let supabaseKey = "sb_publishable_m3zrsYu4axfZhCo6RD-bKw_mNsd8Nq9"
+
 let supabase = SupabaseClient(
-    supabaseURL: URL(string: "https://uxkyrcyyuxtvgasqplua.supabase.co")!,
-    supabaseKey: "sb_publishable_m3zrsYu4axfZhCo6RD-bKw_mNsd8Nq9"
+    supabaseURL: URL(string: supabaseURL)!,
+    supabaseKey: supabaseKey
 )
 
 // MARK: - 测试状态枚举
@@ -130,7 +133,7 @@ struct SupabaseTestView: View {
         logMessages = []
 
         addLog("🔄 开始测试连接...")
-        addLog("📡 Supabase URL: \(supabase.supabaseURL.absoluteString)")
+        addLog("📡 Supabase URL: \(supabaseURL)")
         addLog("🔑 使用 Publishable Key")
         addLog("⏳ 发送测试请求...")
 
