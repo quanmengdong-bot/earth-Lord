@@ -173,7 +173,7 @@ struct AuthTestView: View {
                     }
                     .frame(maxWidth: .infinity)
                     .padding()
-                    .background(ApocalypseTheme.secondary)
+                    .background(ApocalypseTheme.info)
                     .foregroundColor(.white)
                     .cornerRadius(12)
                 }
@@ -198,7 +198,7 @@ struct AuthTestView: View {
                     }
                     .frame(maxWidth: .infinity)
                     .padding()
-                    .background(ApocalypseTheme.accent)
+                    .background(ApocalypseTheme.warning)
                     .foregroundColor(.white)
                     .cornerRadius(12)
                 }
