@@ -25,8 +25,8 @@ struct RootView: View {
                 MainTabView()
                     .transition(.opacity)
             } else {
-                // 未登录，显示登录页
-                LoginView()
+                // 未登录，显示认证页
+                AuthView()
                     .transition(.opacity)
             }
         }
