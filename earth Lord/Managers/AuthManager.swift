@@ -39,10 +39,85 @@ class AuthManager: ObservableObject {
     // MARK: - 单例
     static let shared = AuthManager()
 
+    // 认证状态监听任务
+    private var authStateTask: Task<Void, Never>?
+
     private init() {
         // 启动时检查会话
         Task {
             await checkSession()
+            // 启动认证状态监听
+            await startAuthStateListener()
+        }
+    }
+
+    deinit {
+        // 取消监听任务
+        authStateTask?.cancel()
+    }
+
+    // MARK: - 认证状态监听
+
+    /// 监听认证状态变化
+    private func startAuthStateListener() async {
+        authStateTask = Task {
+            for await (event, session) in await supabase.auth.authStateChanges {
+                await handleAuthStateChange(event: event, session: session)
+            }
+        }
+    }
+
+    /// 处理认证状态变化
+    private func handleAuthStateChange(event: AuthChangeEvent, session: Session?) {
+        print("🔄 认证状态变化: \(event)")
+
+        switch event {
+        case .signedIn:
+            // 用户登录
+            if let session = session {
+                isAuthenticated = true
+                needsPasswordSetup = false
+                currentUser = User(
+                    id: session.user.id.uuidString,
+                    email: session.user.email,
+                    createdAt: session.user.createdAt
+                )
+                print("✅ 用户已登录: \(session.user.email ?? "unknown")")
+            }
+
+        case .signedOut:
+            // 用户登出
+            isAuthenticated = false
+            needsPasswordSetup = false
+            currentUser = nil
+            otpSent = false
+            otpVerified = false
+            print("👋 用户已登出")
+
+        case .tokenRefreshed:
+            // Token 刷新
+            if let session = session {
+                print("🔄 Token 已刷新")
+                currentUser = User(
+                    id: session.user.id.uuidString,
+                    email: session.user.email,
+                    createdAt: session.user.createdAt
+                )
+            }
+
+        case .userUpdated:
+            // 用户信息更新
+            if let session = session {
+                print("📝 用户信息已更新")
+                currentUser = User(
+                    id: session.user.id.uuidString,
+                    email: session.user.email,
+                    createdAt: session.user.createdAt
+                )
+            }
+
+        default:
+            print("ℹ️ 其他认证事件: \(event)")
         }
     }
 
