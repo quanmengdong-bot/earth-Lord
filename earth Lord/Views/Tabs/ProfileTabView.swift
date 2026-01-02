@@ -10,6 +10,9 @@ import SwiftUI
 struct ProfileTabView: View {
     @ObservedObject private var authManager = AuthManager.shared
     @State private var showLogoutAlert = false
+    @State private var showDeleteConfirmation = false
+    @State private var showDeleteError = false
+    @State private var deleteErrorMessage = ""
 
     var body: some View {
         ZStack {
@@ -27,6 +30,9 @@ struct ProfileTabView: View {
                     // 退出登录按钮
                     logoutSection
 
+                    // 删除账户按钮
+                    deleteAccountSection
+
                     Spacer()
                 }
                 .padding()
@@ -41,6 +47,21 @@ struct ProfileTabView: View {
             }
         } message: {
             Text("确定要退出登录吗？")
+        }
+        .alert("确认删除账户", isPresented: $showDeleteConfirmation) {
+            Button("取消", role: .cancel) { }
+            Button("删除", role: .destructive) {
+                Task {
+                    await deleteAccount()
+                }
+            }
+        } message: {
+            Text("⚠️ 此操作不可逆！删除后您的所有数据将永久丢失，且无法恢复。")
+        }
+        .alert("删除失败", isPresented: $showDeleteError) {
+            Button("确定", role: .cancel) { }
+        } message: {
+            Text(deleteErrorMessage)
         }
     }
 
@@ -118,6 +139,51 @@ struct ProfileTabView: View {
             .padding()
             .background(ApocalypseTheme.danger)
             .cornerRadius(12)
+        }
+    }
+
+    // MARK: - 删除账户区域
+    private var deleteAccountSection: some View {
+        Button(action: {
+            print("👆 点击删除账户按钮")
+            showDeleteConfirmation = true
+        }) {
+            HStack {
+                Image(systemName: "trash.fill")
+                    .font(.headline)
+                Text("删除账户")
+                    .fontWeight(.semibold)
+                Spacer()
+            }
+            .foregroundColor(.white)
+            .padding()
+            .background(
+                LinearGradient(
+                    colors: [Color.red.opacity(0.8), Color.red.opacity(0.6)],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
+            .cornerRadius(12)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Color.red.opacity(0.5), lineWidth: 1)
+            )
+        }
+    }
+
+    // MARK: - 删除账户方法
+    private func deleteAccount() async {
+        print("👆 用户确认删除账户")
+
+        do {
+            try await authManager.deleteAccount()
+            print("✅ 账户删除成功，自动返回登录页")
+            // 成功后会自动返回登录页（因为 isAuthenticated = false）
+        } catch {
+            print("❌ 删除账户失败: \(error.localizedDescription)")
+            deleteErrorMessage = error.localizedDescription
+            showDeleteError = true
         }
     }
 }

@@ -56,27 +56,39 @@ https://console.cloud.google.com/
 
 ---
 
-### 步骤 2: 配置 Info.plist
+### 步骤 2: 在 Xcode 中配置 Google Sign-In
 
-#### 📝 打开 Info.plist 文件
+#### 📝 打开项目设置
+
 ```
-路径: earth Lord/Info.plist
+1. 在 Xcode 中打开项目
+2. 选择项目导航器中的 "earth Lord" 项目
+3. 选择 "earth Lord" Target
+4. 选择 "Info" 标签页
 ```
 
-#### 🔧 替换配置
+#### 🔧 添加 Google Client ID
 
-找到以下两处 `YOUR_CLIENT_ID`，替换为你的实际 Client ID：
+在 "Custom iOS Target Properties" 中添加：
 
-```xml
-<!-- 1. GIDClientID（完整的 Client ID）-->
-<key>GIDClientID</key>
-<string>YOUR_CLIENT_ID.apps.googleusercontent.com</string>
+```
+1. 点击任意一行，然后点击 "+" 按钮
+2. Key: GIDClientID
+3. Type: String
+4. Value: YOUR_CLIENT_ID.apps.googleusercontent.com
+```
 
-<!-- 2. URL Schemes（只需要 Client ID 部分）-->
-<key>CFBundleURLSchemes</key>
-<array>
-    <string>com.googleusercontent.apps.YOUR_CLIENT_ID</string>
-</array>
+#### 🔗 配置 URL Scheme
+
+在 "URL Types" 部分（如果看不到，向下滚动到底部）：
+
+```
+1. 展开 "URL Types"
+2. 点击 "+" 添加新的 URL Type
+3. Identifier: 填写 "Google Sign-In"
+4. URL Schemes: 填写 "com.googleusercontent.apps.YOUR_CLIENT_ID"
+   （注意：只需要 Client ID 部分，去掉 .apps.googleusercontent.com）
+5. Role: 选择 "Editor"
 ```
 
 #### ✅ 配置示例
@@ -88,16 +100,36 @@ https://console.cloud.google.com/
 
 那么配置应该是：
 
-```xml
-<!-- GIDClientID 配置（完整 ID）-->
-<key>GIDClientID</key>
-<string>123456789-abcdefg.apps.googleusercontent.com</string>
+**自定义属性（Custom iOS Target Properties）：**
+- Key: `GIDClientID`
+- Value: `123456789-abcdefg.apps.googleusercontent.com`
 
-<!-- URL Scheme 配置（反转的格式）-->
-<key>CFBundleURLSchemes</key>
-<array>
-    <string>com.googleusercontent.apps.123456789-abcdefg</string>
-</array>
+**URL Types：**
+- Identifier: `Google Sign-In`
+- URL Schemes: `com.googleusercontent.apps.123456789-abcdefg`
+- Role: `Editor`
+
+#### 📸 配置截图参考
+
+**添加 GIDClientID：**
+```
+Custom iOS Target Properties
+┌─────────────────────────────────────────┐
+│ ⊕ GIDClientID                           │
+│   └─ String: 123456789-abc....com       │
+└─────────────────────────────────────────┘
+```
+
+**配置 URL Types：**
+```
+URL Types
+┌─────────────────────────────────────────┐
+│ ⊕ Item 0                                │
+│   ├─ Identifier: Google Sign-In         │
+│   ├─ URL Schemes                        │
+│   │  └─ Item 0: com.googleuserconte...  │
+│   └─ Role: Editor                       │
+└─────────────────────────────────────────┘
 ```
 
 ---
@@ -173,15 +205,16 @@ Product → Run (⌘ + R)
 
 #### 检查点：
 ```
-1. Info.plist 中 GIDClientID 是否正确配置
+1. Xcode 项目设置中 GIDClientID 是否正确配置
 2. 控制台是否显示「❌ 未配置 Google Client ID」
 ```
 
 #### 解决方案：
 ```
-1. 检查 Info.plist 中的 GIDClientID 配置
-2. 确保格式正确（包含 .apps.googleusercontent.com）
-3. Clean Build Folder 并重新运行
+1. 打开 Xcode → 选择 Target → Info 标签页
+2. 检查 Custom iOS Target Properties 中的 GIDClientID
+3. 确保格式正确（包含 .apps.googleusercontent.com）
+4. Clean Build Folder (⌘ + Shift + K) 并重新运行
 ```
 
 ---
@@ -196,9 +229,10 @@ Product → Run (⌘ + R)
 
 #### 解决方案：
 ```
-1. 检查 Info.plist 中的 CFBundleURLSchemes
-2. 确保格式为: com.googleusercontent.apps.YOUR_CLIENT_ID
-3. 确保模拟器或真机有网络连接
+1. 打开 Xcode → 选择 Target → Info 标签页
+2. 检查 URL Types 中的 URL Schemes 配置
+3. 确保格式为: com.googleusercontent.apps.YOUR_CLIENT_ID
+4. 确保模拟器或真机有网络连接
 ```
 
 ---
@@ -323,10 +357,11 @@ Product → Run (⌘ + R)
 - [ ] Bundle ID 正确匹配项目
 - [ ] 已获取 Client ID
 
-### Info.plist 配置
-- [ ] `GIDClientID` 已填入完整 Client ID
-- [ ] `CFBundleURLSchemes` 已配置正确的 URL Scheme
-- [ ] 格式正确（com.googleusercontent.apps.YOUR_CLIENT_ID）
+### Xcode 项目配置
+- [ ] 在 Target → Info → Custom iOS Target Properties 中添加 `GIDClientID`
+- [ ] GIDClientID 值为完整的 Client ID (xxx.apps.googleusercontent.com)
+- [ ] 在 Target → Info → URL Types 中添加 URL Scheme
+- [ ] URL Scheme 格式正确（com.googleusercontent.apps.YOUR_CLIENT_ID）
 
 ### Supabase 配置
 - [ ] Google Provider 已启用
