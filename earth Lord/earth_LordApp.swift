@@ -19,21 +19,36 @@ struct earth_LordApp: App {
                     // 启动画面
                     SplashView(isFinished: $showSplash)
                         .transition(.opacity)
+                        .onAppear {
+                            print("📱 显示启动画面")
+                        }
                 } else {
                     // 根据认证状态显示不同页面
                     if authManager.isAuthenticated {
                         // 已登录 → 显示主页面
                         ContentView()
                             .transition(.opacity)
+                            .onAppear {
+                                print("🏠 显示主页面（已登录）")
+                            }
                     } else {
                         // 未登录 → 显示认证页面
                         AuthView()
                             .transition(.opacity)
+                            .onAppear {
+                                print("🔐 显示认证页面（未登录）")
+                            }
                     }
                 }
             }
             .animation(.easeInOut(duration: 0.3), value: showSplash)
             .animation(.easeInOut(duration: 0.3), value: authManager.isAuthenticated)
+            .onChange(of: showSplash) { oldValue, newValue in
+                print("🔄 showSplash 状态变化: \(oldValue) → \(newValue)")
+            }
+            .onChange(of: authManager.isAuthenticated) { oldValue, newValue in
+                print("🔄 isAuthenticated 状态变化: \(oldValue) → \(newValue)")
+            }
         }
     }
 }

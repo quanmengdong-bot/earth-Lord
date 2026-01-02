@@ -102,6 +102,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				DEA440DA2F036796007F2534 /* XCRemoteSwiftPackageReference "supabase-swift" */,
+				DE7D2A372F0781DE007EC36A /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = DEA440B72EFCD19F007F2534 /* Products */;
@@ -343,6 +344,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		DE7D2A372F0781DE007EC36A /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/google/GoogleSignIn-iOS";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 9.0.0;
+			};
+		};
 		DEA440DA2F036796007F2534 /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/supabase/supabase-swift";

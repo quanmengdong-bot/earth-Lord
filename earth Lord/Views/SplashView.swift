@@ -157,22 +157,29 @@ struct SplashView: View {
         Task {
             loadingText = "正在检查登录状态..."
             await authManager.checkSession()
-        }
+            print("✅ 会话检查完成")
 
-        // 第二步：加载资源
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            loadingText = "正在加载资源..."
-        }
+            // 第二步：加载资源
+            try? await Task.sleep(nanoseconds: 1_000_000_000) // 1秒
+            await MainActor.run {
+                loadingText = "正在加载资源..."
+                print("📦 加载资源中...")
+            }
 
-        // 第三步：准备就绪
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-            loadingText = "准备就绪"
-        }
+            // 第三步：准备就绪
+            try? await Task.sleep(nanoseconds: 1_000_000_000) // 1秒
+            await MainActor.run {
+                loadingText = "准备就绪"
+                print("✅ 准备就绪")
+            }
 
-        // 完成加载，进入主界面
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
-            withAnimation(.easeInOut(duration: 0.3)) {
-                isFinished = true
+            // 完成加载，进入主界面
+            try? await Task.sleep(nanoseconds: 500_000_000) // 0.5秒
+            await MainActor.run {
+                print("🚀 启动画面完成，isFinished = true")
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    isFinished = true
+                }
             }
         }
     }
