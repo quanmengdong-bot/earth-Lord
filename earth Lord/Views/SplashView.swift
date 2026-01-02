@@ -176,9 +176,9 @@ struct SplashView: View {
             // 完成加载，进入主界面
             try? await Task.sleep(nanoseconds: 500_000_000) // 0.5秒
             await MainActor.run {
-                print("🚀 启动画面完成，isFinished = true")
+                print("🚀 启动画面完成，设置 isFinished = false（隐藏启动画面）")
                 withAnimation(.easeInOut(duration: 0.3)) {
-                    isFinished = true
+                    isFinished = false
                 }
             }
         }
