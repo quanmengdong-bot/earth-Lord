@@ -458,7 +458,10 @@ struct AuthView: View {
                 backgroundColor: .white,
                 textColor: .black
             ) {
-                showToastMessage("Google 登录即将开放")
+                print("👆 点击 Google 登录按钮")
+                Task {
+                    await authManager.signInWithGoogle()
+                }
             }
         }
     }

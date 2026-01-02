@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import GoogleSignIn
 
 @main
 struct earth_LordApp: App {
@@ -48,6 +49,11 @@ struct earth_LordApp: App {
             }
             .onChange(of: authManager.isAuthenticated) { oldValue, newValue in
                 print("🔄 isAuthenticated 状态变化: \(oldValue) → \(newValue)")
+            }
+            // 处理 Google Sign-In 的 URL 回调
+            .onOpenURL { url in
+                print("📲 收到 URL 回调: \(url.absoluteString)")
+                GIDSignIn.sharedInstance.handle(url)
             }
         }
     }

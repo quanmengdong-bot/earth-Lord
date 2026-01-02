@@ -8,6 +8,8 @@
 import Foundation
 import Combine
 import Supabase
+import GoogleSignIn
+import UIKit
 
 // MARK: - 认证管理器
 @MainActor
@@ -356,11 +358,110 @@ class AuthManager: ObservableObject {
     }
 
     /// Google 登录
-    /// - Note: TODO: 实现 Google Sign In
+    /// - Note: 使用 Google Sign-In SDK 获取 ID Token，然后通过 Supabase OAuth 登录
     func signInWithGoogle() async {
-        // TODO: 实现 Google Sign In 集成
-        print("⚠️ Google Sign In 尚未实现")
-        errorMessage = "Google 登录功能开发中"
+        print("🚀 开始 Google 登录流程...")
+        isLoading = true
+        errorMessage = nil
+
+        do {
+            // 1. 获取顶层视图控制器
+            guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                  let rootViewController = windowScene.windows.first?.rootViewController else {
+                print("❌ 无法获取根视图控制器")
+                errorMessage = "无法初始化 Google 登录"
+                isLoading = false
+                return
+            }
+
+            print("📱 获取根视图控制器成功")
+
+            // 2. 获取 Supabase 项目的 Google Client ID（从环境配置）
+            // 注意：这里使用你在 Supabase 中配置的 Google OAuth Client ID
+            guard let clientID = getGoogleClientID() else {
+                print("❌ 未配置 Google Client ID")
+                errorMessage = "Google 登录配置错误"
+                isLoading = false
+                return
+            }
+
+            print("🔑 Google Client ID 已配置")
+
+            // 3. 配置 Google Sign-In
+            let configuration = GIDConfiguration(clientID: clientID)
+            GIDSignIn.sharedInstance.configuration = configuration
+
+            print("⚙️ Google Sign-In 配置完成")
+
+            // 4. 执行 Google 登录
+            print("🔐 打开 Google 登录界面...")
+            let result = try await GIDSignIn.sharedInstance.signIn(withPresenting: rootViewController)
+
+            print("✅ Google 登录成功，获取用户信息...")
+
+            // 5. 获取 ID Token
+            guard let idToken = result.user.idToken?.tokenString else {
+                print("❌ 无法获取 Google ID Token")
+                errorMessage = "Google 登录失败：无法获取凭证"
+                isLoading = false
+                return
+            }
+
+            print("🎫 获取 ID Token 成功")
+
+            // 6. 使用 ID Token 通过 Supabase 登录
+            print("🔄 使用 ID Token 登录 Supabase...")
+            let session = try await supabase.auth.signInWithIdToken(
+                credentials: .init(
+                    provider: .google,
+                    idToken: idToken
+                )
+            )
+
+            // 7. 登录成功，更新状态
+            isAuthenticated = true
+            needsPasswordSetup = false
+
+            // 更新用户信息
+            currentUser = User(
+                id: session.user.id.uuidString,
+                email: session.user.email,
+                createdAt: session.user.createdAt
+            )
+
+            print("✅ Google 登录完成！用户: \(session.user.email ?? "unknown")")
+
+        } catch let error as NSError {
+            // 处理用户取消登录的情况
+            if error.domain == "com.google.GIDSignIn" && error.code == -5 {
+                print("ℹ️ 用户取消了 Google 登录")
+                errorMessage = nil // 不显示错误，用户主动取消
+            } else {
+                print("❌ Google 登录失败: \(error.localizedDescription)")
+                errorMessage = "Google 登录失败: \(error.localizedDescription)"
+            }
+        }
+
+        isLoading = false
+    }
+
+    /// 获取 Google Client ID
+    /// - Returns: Google OAuth Client ID
+    /// - Note: 在实际项目中，应该从配置文件或环境变量中读取
+    private func getGoogleClientID() -> String? {
+        // 方法 1: 从 Info.plist 读取（推荐）
+        if let clientID = Bundle.main.object(forInfoDictionaryKey: "GIDClientID") as? String {
+            return clientID
+        }
+
+        // 方法 2: 从 Supabase 项目配置读取（如果你在 Supabase 中配置了 Google Provider）
+        // 请替换为你在 Supabase Dashboard 中配置的 Google Client ID
+        // 格式: "YOUR_CLIENT_ID.apps.googleusercontent.com"
+
+        // TODO: 在这里填入你的 Google Client ID
+        // return "YOUR_CLIENT_ID.apps.googleusercontent.com"
+
+        return nil
     }
 
     // MARK: - 其他方法
