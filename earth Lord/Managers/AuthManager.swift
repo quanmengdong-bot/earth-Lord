@@ -8,8 +8,10 @@
 import Foundation
 import Combine
 import Supabase
+#if canImport(GoogleSignIn)
 import GoogleSignIn
 import UIKit
+#endif
 
 // MARK: - 认证管理器
 @MainActor
@@ -360,6 +362,7 @@ class AuthManager: ObservableObject {
     /// Google 登录
     /// - Note: 使用 Google Sign-In SDK 获取 ID Token，然后通过 Supabase OAuth 登录
     func signInWithGoogle() async {
+        #if canImport(GoogleSignIn)
         print("🚀 开始 Google 登录流程...")
         isLoading = true
         errorMessage = nil
@@ -443,12 +446,17 @@ class AuthManager: ObservableObject {
         }
 
         isLoading = false
+        #else
+        print("⚠️ GoogleSignIn SDK 未安装")
+        errorMessage = "Google 登录功能需要安装 GoogleSignIn SDK"
+        #endif
     }
 
     /// 获取 Google Client ID
     /// - Returns: Google OAuth Client ID
     /// - Note: 在实际项目中，应该从配置文件或环境变量中读取
     private func getGoogleClientID() -> String? {
+        #if canImport(GoogleSignIn)
         // 方法 1: 从 Info.plist 读取（推荐）
         if let clientID = Bundle.main.object(forInfoDictionaryKey: "GIDClientID") as? String {
             return clientID
@@ -462,6 +470,9 @@ class AuthManager: ObservableObject {
         // return "YOUR_CLIENT_ID.apps.googleusercontent.com"
 
         return nil
+        #else
+        return nil
+        #endif
     }
 
     // MARK: - 其他方法

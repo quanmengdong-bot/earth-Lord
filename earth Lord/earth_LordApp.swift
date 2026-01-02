@@ -6,7 +6,9 @@
 //
 
 import SwiftUI
+#if canImport(GoogleSignIn)
 import GoogleSignIn
+#endif
 
 @main
 struct earth_LordApp: App {
@@ -53,7 +55,9 @@ struct earth_LordApp: App {
             // 处理 Google Sign-In 的 URL 回调
             .onOpenURL { url in
                 print("📲 收到 URL 回调: \(url.absoluteString)")
+                #if canImport(GoogleSignIn)
                 GIDSignIn.sharedInstance.handle(url)
+                #endif
             }
         }
     }
