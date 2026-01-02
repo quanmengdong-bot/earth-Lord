@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Combine
 import Supabase
 
 // MARK: - 认证管理器
@@ -95,13 +96,12 @@ class AuthManager: ObservableObject {
             isAuthenticated = false // 必须设置密码后才算完成认证
 
             // 更新用户信息
-            if let supaUser = response.user {
-                currentUser = User(
-                    id: supaUser.id.uuidString,
-                    email: supaUser.email,
-                    createdAt: supaUser.createdAt
-                )
-            }
+            let supaUser = response.user
+            currentUser = User(
+                id: supaUser.id.uuidString,
+                email: supaUser.email,
+                createdAt: supaUser.createdAt
+            )
 
             print("✅ 验证码验证成功，等待设置密码")
 
@@ -162,13 +162,12 @@ class AuthManager: ObservableObject {
             needsPasswordSetup = false
 
             // 更新用户信息
-            if let supaUser = response.user {
-                currentUser = User(
-                    id: supaUser.id.uuidString,
-                    email: supaUser.email,
-                    createdAt: supaUser.createdAt
-                )
-            }
+            let supaUser = response.user
+            currentUser = User(
+                id: supaUser.id.uuidString,
+                email: supaUser.email,
+                createdAt: supaUser.createdAt
+            )
 
             print("✅ 登录成功: \(email)")
 
@@ -228,13 +227,12 @@ class AuthManager: ObservableObject {
             isAuthenticated = false
 
             // 更新用户信息
-            if let supaUser = response.user {
-                currentUser = User(
-                    id: supaUser.id.uuidString,
-                    email: supaUser.email,
-                    createdAt: supaUser.createdAt
-                )
-            }
+            let supaUser = response.user
+            currentUser = User(
+                id: supaUser.id.uuidString,
+                email: supaUser.email,
+                createdAt: supaUser.createdAt
+            )
 
             print("✅ 重置验证码验证成功，等待设置新密码")
 
