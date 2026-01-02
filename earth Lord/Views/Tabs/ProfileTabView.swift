@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct ProfileTabView: View {
-    @StateObject private var authManager = AuthManager.shared
+    @ObservedObject private var authManager = AuthManager.shared
     @State private var showLogoutAlert = false
 
     var body: some View {

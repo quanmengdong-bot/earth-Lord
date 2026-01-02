@@ -9,7 +9,7 @@ import SwiftUI
 
 // MARK: - 认证页面（登录/注册整合）
 struct AuthView: View {
-    @StateObject private var authManager = AuthManager.shared
+    @ObservedObject private var authManager = AuthManager.shared
 
     // Tab 选择
     @State private var selectedTab: AuthTab = .login

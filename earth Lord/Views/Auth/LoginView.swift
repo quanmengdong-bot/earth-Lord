@@ -9,7 +9,7 @@ import SwiftUI
 
 // MARK: - 登录页面
 struct LoginView: View {
-    @StateObject private var authManager = AuthManager.shared
+    @ObservedObject private var authManager = AuthManager.shared
     @State private var email: String = ""
     @State private var password: String = ""
     @State private var showRegister: Bool = false

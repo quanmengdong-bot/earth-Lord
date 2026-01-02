@@ -10,7 +10,7 @@ import SwiftUI
 // MARK: - 忘记密码页面
 struct ForgotPasswordView: View {
     @Environment(\.dismiss) private var dismiss
-    @StateObject private var authManager = AuthManager.shared
+    @ObservedObject private var authManager = AuthManager.shared
 
     @State private var email: String = ""
     @State private var otpCode: String = ""

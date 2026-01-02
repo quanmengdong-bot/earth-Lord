@@ -10,7 +10,7 @@ import SwiftUI
 // MARK: - 注册页面
 struct RegisterView: View {
     @Environment(\.dismiss) private var dismiss
-    @StateObject private var authManager = AuthManager.shared
+    @ObservedObject private var authManager = AuthManager.shared
 
     @State private var email: String = ""
     @State private var otpCode: String = ""

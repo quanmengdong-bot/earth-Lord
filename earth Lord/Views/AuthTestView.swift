@@ -9,7 +9,7 @@ import SwiftUI
 
 // MARK: - 认证功能测试视图
 struct AuthTestView: View {
-    @StateObject private var authManager = AuthManager.shared
+    @ObservedObject private var authManager = AuthManager.shared
     @State private var email: String = ""
     @State private var otpCode: String = ""
     @State private var password: String = ""

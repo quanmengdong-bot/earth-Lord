@@ -9,7 +9,7 @@ import SwiftUI
 
 /// 根视图：控制启动页、登录页与主界面的切换
 struct RootView: View {
-    @StateObject private var authManager = AuthManager.shared
+    @ObservedObject private var authManager = AuthManager.shared
 
     /// 启动页是否完成
     @State private var splashFinished = false
