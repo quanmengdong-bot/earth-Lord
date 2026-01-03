@@ -66,7 +66,7 @@ class AuthManager: ObservableObject {
     private func startAuthStateListener() async {
         authStateTask = Task {
             for await (event, session) in supabase.auth.authStateChanges {
-                await handleAuthStateChange(event: event, session: session)
+                handleAuthStateChange(event: event, session: session)
             }
         }
     }
