@@ -9,10 +9,12 @@ import SwiftUI
 
 struct ProfileTabView: View {
     @ObservedObject private var authManager = AuthManager.shared
+    @ObservedObject private var languageManager = LanguageManager.shared
     @State private var showLogoutAlert = false
     @State private var showDeleteConfirmation = false
     @State private var showDeleteError = false
     @State private var deleteErrorMessage = ""
+    @State private var showLanguageSelector = false
 
     var body: some View {
         ZStack {
@@ -38,30 +40,33 @@ struct ProfileTabView: View {
                 .padding()
             }
         }
-        .alert("确认退出", isPresented: $showLogoutAlert) {
-            Button("取消", role: .cancel) { }
-            Button("退出", role: .destructive) {
+        .alert("确认退出".localized, isPresented: $showLogoutAlert) {
+            Button("取消".localized, role: .cancel) { }
+            Button("退出".localized, role: .destructive) {
                 Task {
                     await authManager.signOut()
                 }
             }
         } message: {
-            Text("确定要退出登录吗？")
+            Text("确定要退出登录吗？".localized)
         }
-        .alert("确认删除账户", isPresented: $showDeleteConfirmation) {
-            Button("取消", role: .cancel) { }
-            Button("删除", role: .destructive) {
+        .alert("确认删除账户".localized, isPresented: $showDeleteConfirmation) {
+            Button("取消".localized, role: .cancel) { }
+            Button("删除".localized, role: .destructive) {
                 Task {
                     await deleteAccount()
                 }
             }
         } message: {
-            Text("⚠️ 此操作不可逆！删除后您的所有数据将永久丢失，且无法恢复。")
+            Text("⚠️ 此操作不可逆！删除后您的所有数据将永久丢失，且无法恢复。".localized)
         }
-        .alert("删除失败", isPresented: $showDeleteError) {
-            Button("确定", role: .cancel) { }
+        .alert("删除失败".localized, isPresented: $showDeleteError) {
+            Button("确定".localized, role: .cancel) { }
         } message: {
             Text(deleteErrorMessage)
+        }
+        .sheet(isPresented: $showLanguageSelector) {
+            languageSelectionSheet
         }
     }
 
@@ -94,7 +99,7 @@ struct ProfileTabView: View {
 
             // 用户ID
             if let userId = authManager.currentUser?.id {
-                Text("ID: \(userId.prefix(8))...")
+                Text("ID: %@...".localized(with: String(userId.prefix(8))))
                     .font(.caption)
                     .foregroundColor(ApocalypseTheme.textSecondary)
             }
@@ -108,16 +113,43 @@ struct ProfileTabView: View {
     // MARK: - 菜单区域
     private var menuSection: some View {
         VStack(spacing: 0) {
-            MenuRow(icon: "gearshape.fill", title: "设置", color: .gray)
+            MenuRow(icon: "gearshape.fill", title: "设置".localized, color: .gray)
             Divider().background(ApocalypseTheme.textSecondary.opacity(0.3))
 
-            MenuRow(icon: "bell.fill", title: "通知", color: .blue)
+            // 语言选择
+            Button(action: {
+                showLanguageSelector = true
+            }) {
+                HStack(spacing: 16) {
+                    Image(systemName: "globe")
+                        .font(.title3)
+                        .foregroundColor(.purple)
+                        .frame(width: 32)
+
+                    Text("语言".localized)
+                        .foregroundColor(ApocalypseTheme.textPrimary)
+
+                    Spacer()
+
+                    Text(languageManager.currentLanguage.displayName)
+                        .font(.caption)
+                        .foregroundColor(ApocalypseTheme.textSecondary)
+
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundColor(ApocalypseTheme.textSecondary)
+                }
+                .padding()
+            }
             Divider().background(ApocalypseTheme.textSecondary.opacity(0.3))
 
-            MenuRow(icon: "shield.fill", title: "隐私", color: .green)
+            MenuRow(icon: "bell.fill", title: "通知".localized, color: .blue)
             Divider().background(ApocalypseTheme.textSecondary.opacity(0.3))
 
-            MenuRow(icon: "questionmark.circle.fill", title: "帮助", color: .orange)
+            MenuRow(icon: "shield.fill", title: "隐私".localized, color: .green)
+            Divider().background(ApocalypseTheme.textSecondary.opacity(0.3))
+
+            MenuRow(icon: "questionmark.circle.fill", title: "帮助".localized, color: .orange)
         }
         .background(ApocalypseTheme.cardBackground)
         .cornerRadius(12)
@@ -131,7 +163,7 @@ struct ProfileTabView: View {
             HStack {
                 Image(systemName: "rectangle.portrait.and.arrow.right")
                     .font(.headline)
-                Text("退出登录")
+                Text("退出登录".localized)
                     .fontWeight(.semibold)
                 Spacer()
             }
@@ -151,7 +183,7 @@ struct ProfileTabView: View {
             HStack {
                 Image(systemName: "trash.fill")
                     .font(.headline)
-                Text("删除账户")
+                Text("删除账户".localized)
                     .fontWeight(.semibold)
                 Spacer()
             }
@@ -169,6 +201,63 @@ struct ProfileTabView: View {
                 RoundedRectangle(cornerRadius: 12)
                     .stroke(Color.red.opacity(0.5), lineWidth: 1)
             )
+        }
+    }
+
+    // MARK: - 语言选择面板
+    private var languageSelectionSheet: some View {
+        NavigationView {
+            ZStack {
+                ApocalypseTheme.background
+                    .ignoresSafeArea()
+
+                VStack(spacing: 0) {
+                    ForEach(AppLanguage.allCases) { language in
+                        Button(action: {
+                            languageManager.changeLanguage(to: language)
+                            showLanguageSelector = false
+                        }) {
+                            HStack {
+                                Text(language.displayName)
+                                    .foregroundColor(ApocalypseTheme.textPrimary)
+                                    .font(.body)
+
+                                Spacer()
+
+                                if languageManager.currentLanguage == language {
+                                    Image(systemName: "checkmark")
+                                        .foregroundColor(ApocalypseTheme.primary)
+                                        .font(.body.weight(.semibold))
+                                }
+                            }
+                            .padding()
+                            .background(
+                                languageManager.currentLanguage == language
+                                    ? ApocalypseTheme.primary.opacity(0.1)
+                                    : Color.clear
+                            )
+                        }
+
+                        if language != AppLanguage.allCases.last {
+                            Divider()
+                                .background(ApocalypseTheme.textSecondary.opacity(0.3))
+                        }
+                    }
+                }
+                .background(ApocalypseTheme.cardBackground)
+                .cornerRadius(12)
+                .padding()
+            }
+            .navigationTitle("语言".localized)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("确定".localized) {
+                        showLanguageSelector = false
+                    }
+                    .foregroundColor(ApocalypseTheme.primary)
+                }
+            }
         }
     }
 
