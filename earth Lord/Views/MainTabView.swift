@@ -15,34 +15,48 @@ struct MainTabView: View {
         TabView(selection: $selectedTab) {
             MapTabView()
                 .tabItem {
-                    Image(systemName: "map.fill")
-                    LocalizedText("地图")
+                    Label(mapTitle, systemImage: "map.fill")
                 }
                 .tag(0)
 
             TerritoryTabView()
                 .tabItem {
-                    Image(systemName: "flag.fill")
-                    LocalizedText("领地")
+                    Label(territoryTitle, systemImage: "flag.fill")
                 }
                 .tag(1)
 
             ProfileTabView()
                 .tabItem {
-                    Image(systemName: "person.fill")
-                    LocalizedText("个人")
+                    Label(profileTitle, systemImage: "person.fill")
                 }
                 .tag(2)
 
             MoreTabView()
                 .tabItem {
-                    Image(systemName: "ellipsis")
-                    LocalizedText("更多")
+                    Label(moreTitle, systemImage: "ellipsis")
                 }
                 .tag(3)
         }
         .tint(ApocalypseTheme.primary)
         .id(languageManager.currentLanguage) // 强制刷新 TabView
+    }
+
+    // MARK: - Computed Properties for Localized Titles
+
+    private var mapTitle: String {
+        "地图".localized
+    }
+
+    private var territoryTitle: String {
+        "领地".localized
+    }
+
+    private var profileTitle: String {
+        "个人".localized
+    }
+
+    private var moreTitle: String {
+        "更多".localized
     }
 }
 
