@@ -23,15 +23,20 @@ enum AppLanguage: String, CaseIterable, Identifiable {
     }
 
     /// 获取对应的语言代码
-    var languageCode: String? {
+    var languageCode: String {
         switch self {
         case .system:
-            return Locale.preferredLanguages.first?.components(separatedBy: "-").first
+            return Locale.preferredLanguages.first?.components(separatedBy: "-").first ?? "zh-Hans"
         case .simplifiedChinese:
             return "zh-Hans"
         case .english:
             return "en"
         }
+    }
+
+    /// 获取 Locale
+    var locale: Locale {
+        return Locale(identifier: languageCode)
     }
 }
 
@@ -99,13 +104,16 @@ class LanguageManager: ObservableObject {
 
     /// 更新当前使用的 Bundle
     private func updateCurrentBundle() {
-        guard let languageCode = currentLanguage.languageCode else {
-            currentBundle = Bundle.main
-            print("📦 使用主 Bundle（系统语言）")
-            return
-        }
+        let languageCode = currentLanguage.languageCode
 
         print("🔍 尝试加载语言包: \(languageCode)")
+
+        // 如果是中文，使用主 Bundle
+        if languageCode == "zh-Hans" {
+            currentBundle = Bundle.main
+            print("📦 使用主 Bundle（源语言：中文）")
+            return
+        }
 
         // 尝试获取对应语言的 Bundle
         if let bundlePath = Bundle.main.path(forResource: languageCode, ofType: "lproj"),
@@ -116,7 +124,7 @@ class LanguageManager: ObservableObject {
 
             // 测试翻译
             let testKey = "地图"
-            let translated = currentBundle.localizedString(forKey: testKey, value: nil, table: nil)
+            let translated = NSLocalizedString(testKey, bundle: bundle, comment: "")
             print("🧪 测试翻译 '\(testKey)' -> '\(translated)'")
         } else {
             // 回退到主 Bundle
@@ -132,7 +140,21 @@ class LanguageManager: ObservableObject {
 extension String {
     /// 获取本地化字符串（使用 LanguageManager）
     var localized: String {
-        return LanguageManager.shared.localizedString(self)
+        let languageCode = LanguageManager.shared.currentLanguage.languageCode
+
+        // 如果是源语言（中文），直接返回
+        if languageCode == "zh-Hans" {
+            return self
+        }
+
+        // 使用 NSLocalizedString，指定语言
+        if let bundlePath = Bundle.main.path(forResource: languageCode, ofType: "lproj"),
+           let bundle = Bundle(path: bundlePath) {
+            return NSLocalizedString(self, bundle: bundle, comment: "")
+        }
+
+        // 回退到原字符串
+        return self
     }
 
     /// 获取本地化字符串（带参数）
