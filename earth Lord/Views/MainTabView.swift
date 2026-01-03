@@ -9,34 +9,31 @@ import SwiftUI
 
 struct MainTabView: View {
     @State private var selectedTab = 0
+    @ObservedObject private var languageManager = LanguageManager.shared
 
     var body: some View {
         TabView(selection: $selectedTab) {
             MapTabView()
                 .tabItem {
-                    Image(systemName: "map.fill")
-                    Text("地图")
+                    Label("地图".localized, systemImage: "map.fill")
                 }
                 .tag(0)
 
             TerritoryTabView()
                 .tabItem {
-                    Image(systemName: "flag.fill")
-                    Text("领地")
+                    Label("领地".localized, systemImage: "flag.fill")
                 }
                 .tag(1)
 
             ProfileTabView()
                 .tabItem {
-                    Image(systemName: "person.fill")
-                    Text("个人")
+                    Label("个人".localized, systemImage: "person.fill")
                 }
                 .tag(2)
 
             MoreTabView()
                 .tabItem {
-                    Image(systemName: "ellipsis")
-                    Text("更多")
+                    Label("更多".localized, systemImage: "ellipsis")
                 }
                 .tag(3)
         }

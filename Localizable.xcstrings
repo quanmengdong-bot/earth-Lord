@@ -2,6 +2,7 @@
   "sourceLanguage" : "zh-Hans",
   "strings" : {
     "⚠️ 此操作不可逆！删除后您的所有数据将永久丢失，且无法恢复。" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -72,6 +73,7 @@
       }
     },
     "ID: %@..." : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -152,6 +154,7 @@
       }
     },
     "删除" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -162,6 +165,7 @@
       }
     },
     "删除失败" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -172,6 +176,7 @@
       }
     },
     "删除账户" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -257,6 +262,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Password Reset Successfully"
+          }
+        }
+      }
+    },
+    "帮助" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Help"
           }
         }
       }
@@ -472,6 +488,7 @@
       }
     },
     "确定要退出登录吗？" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -482,6 +499,7 @@
       }
     },
     "确认删除账户" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -512,6 +530,7 @@
       }
     },
     "确认退出" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -547,6 +566,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Auth Test"
+          }
+        }
+      }
+    },
+    "设置" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Settings"
+          }
+        }
+      }
+    },
+    "语言" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Language"
           }
         }
       }
@@ -592,6 +633,7 @@
       }
     },
     "退出" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -607,6 +649,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sign Out"
+          }
+        }
+      }
+    },
+    "通知" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Notifications"
           }
         }
       }
@@ -691,6 +744,17 @@
         }
       }
     },
+    "隐私" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Privacy"
+          }
+        }
+      }
+    },
     "领地" : {
       "localizations" : {
         "en" : {
@@ -727,56 +791,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Code sent to"
-          }
-        }
-      }
-    },
-    "语言" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Language"
-          }
-        }
-      }
-    },
-    "设置" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Settings"
-          }
-        }
-      }
-    },
-    "通知" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Notifications"
-          }
-        }
-      }
-    },
-    "隐私" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Privacy"
-          }
-        }
-      }
-    },
-    "帮助" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Help"
           }
         }
       }
