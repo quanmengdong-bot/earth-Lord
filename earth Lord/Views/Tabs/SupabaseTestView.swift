@@ -14,7 +14,12 @@ let supabaseKey = "sb_publishable_m3zrsYu4axfZhCo6RD-bKw_mNsd8Nq9"
 
 let supabase = SupabaseClient(
     supabaseURL: URL(string: supabaseURL)!,
-    supabaseKey: supabaseKey
+    supabaseKey: supabaseKey,
+    options: SupabaseClientOptions(
+        auth: SupabaseClientOptions.AuthOptions(
+            emitLocalSessionAsInitialSession: true
+        )
+    )
 )
 
 // MARK: - 测试状态枚举

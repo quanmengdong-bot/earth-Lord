@@ -79,6 +79,15 @@ class AuthManager: ObservableObject {
         case .signedIn:
             // 用户登录
             if let session = session {
+                // 检查会话是否过期
+                if session.isExpired {
+                    print("⚠️ 会话已过期，需要重新登录")
+                    isAuthenticated = false
+                    needsPasswordSetup = false
+                    currentUser = nil
+                    return
+                }
+
                 isAuthenticated = true
                 needsPasswordSetup = false
                 currentUser = User(
@@ -509,7 +518,16 @@ class AuthManager: ObservableObject {
             // 获取当前会话
             let session = try await supabase.auth.session
 
-            // 如果有会话，说明用户已登录
+            // 检查会话是否过期
+            if session.isExpired {
+                print("⚠️ 本地会话已过期，保持未登录状态")
+                isAuthenticated = false
+                needsPasswordSetup = false
+                currentUser = nil
+                return
+            }
+
+            // 如果有会话且未过期，说明用户已登录
             isAuthenticated = true
             needsPasswordSetup = false
 
