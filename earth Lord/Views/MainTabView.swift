@@ -44,19 +44,27 @@ struct MainTabView: View {
     // MARK: - Computed Properties for Localized Titles
 
     private var mapTitle: String {
-        "地图".localized
+        let translated = "地图".localized
+        print("🏷️ mapTitle 计算: '地图' -> '\(translated)' (语言: \(languageManager.currentLanguage.languageCode))")
+        return translated
     }
 
     private var territoryTitle: String {
-        "领地".localized
+        let translated = "领地".localized
+        print("🏷️ territoryTitle 计算: '领地' -> '\(translated)'")
+        return translated
     }
 
     private var profileTitle: String {
-        "个人".localized
+        let translated = "个人".localized
+        print("🏷️ profileTitle 计算: '个人' -> '\(translated)'")
+        return translated
     }
 
     private var moreTitle: String {
-        "更多".localized
+        let translated = "更多".localized
+        print("🏷️ moreTitle 计算: '更多' -> '\(translated)'")
+        return translated
     }
 }
 
