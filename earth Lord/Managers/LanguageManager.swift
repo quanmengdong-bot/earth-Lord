@@ -101,18 +101,28 @@ class LanguageManager: ObservableObject {
     private func updateCurrentBundle() {
         guard let languageCode = currentLanguage.languageCode else {
             currentBundle = Bundle.main
+            print("📦 使用主 Bundle（系统语言）")
             return
         }
+
+        print("🔍 尝试加载语言包: \(languageCode)")
 
         // 尝试获取对应语言的 Bundle
         if let bundlePath = Bundle.main.path(forResource: languageCode, ofType: "lproj"),
            let bundle = Bundle(path: bundlePath) {
             currentBundle = bundle
             print("✅ 成功加载语言包: \(languageCode)")
+            print("📁 Bundle 路径: \(bundlePath)")
+
+            // 测试翻译
+            let testKey = "地图"
+            let translated = currentBundle.localizedString(forKey: testKey, value: nil, table: nil)
+            print("🧪 测试翻译 '\(testKey)' -> '\(translated)'")
         } else {
             // 回退到主 Bundle
             currentBundle = Bundle.main
             print("⚠️ 未找到语言包: \(languageCode)，使用默认语言")
+            print("📂 检查的路径: \(Bundle.main.bundlePath)")
         }
     }
 }

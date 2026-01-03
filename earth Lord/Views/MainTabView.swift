@@ -15,29 +15,46 @@ struct MainTabView: View {
         TabView(selection: $selectedTab) {
             MapTabView()
                 .tabItem {
-                    Label("地图".localized, systemImage: "map.fill")
+                    Label {
+                        Text(verbatim: "地图".localized)
+                    } icon: {
+                        Image(systemName: "map.fill")
+                    }
                 }
                 .tag(0)
 
             TerritoryTabView()
                 .tabItem {
-                    Label("领地".localized, systemImage: "flag.fill")
+                    Label {
+                        Text(verbatim: "领地".localized)
+                    } icon: {
+                        Image(systemName: "flag.fill")
+                    }
                 }
                 .tag(1)
 
             ProfileTabView()
                 .tabItem {
-                    Label("个人".localized, systemImage: "person.fill")
+                    Label {
+                        Text(verbatim: "个人".localized)
+                    } icon: {
+                        Image(systemName: "person.fill")
+                    }
                 }
                 .tag(2)
 
             MoreTabView()
                 .tabItem {
-                    Label("更多".localized, systemImage: "ellipsis")
+                    Label {
+                        Text(verbatim: "更多".localized)
+                    } icon: {
+                        Image(systemName: "ellipsis")
+                    }
                 }
                 .tag(3)
         }
         .tint(ApocalypseTheme.primary)
+        .id(languageManager.currentLanguage) // 强制刷新 TabView
     }
 }
 

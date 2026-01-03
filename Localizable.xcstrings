@@ -114,6 +114,7 @@
       }
     },
     "个人" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
