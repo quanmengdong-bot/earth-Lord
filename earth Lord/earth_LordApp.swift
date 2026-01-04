@@ -46,11 +46,11 @@ struct earth_LordApp: App {
             }
             .animation(.easeInOut(duration: 0.3), value: showSplash)
             .animation(.easeInOut(duration: 0.3), value: authManager.isAuthenticated)
-            .onChange(of: showSplash) { oldValue, newValue in
-                print("🔄 showSplash 状态变化: \(oldValue) → \(newValue)")
+            .onChange(of: showSplash) { newValue in
+                print("🔄 showSplash 状态变化: \(newValue)")
             }
-            .onChange(of: authManager.isAuthenticated) { oldValue, newValue in
-                print("🔄 isAuthenticated 状态变化: \(oldValue) → \(newValue)")
+            .onChange(of: authManager.isAuthenticated) { newValue in
+                print("🔄 isAuthenticated 状态变化: \(newValue)")
             }
             // 处理 Google Sign-In 的 URL 回调
             .onOpenURL { url in

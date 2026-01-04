@@ -1,6 +1,9 @@
 {
   "sourceLanguage" : "zh-Hans",
   "strings" : {
+    "(%lld)" : {
+
+    },
     "《地球新主》需要获取您的位置来显示您在末日世界中的坐标" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -134,6 +137,9 @@
           }
         }
       }
+    },
+    "停止圈地" : {
+
     },
     "允许定位" : {
       "extractionState" : "stale",
@@ -333,6 +339,9 @@
           }
         }
       }
+    },
+    "开始圈地" : {
+
     },
     "当前位置" : {
       "extractionState" : "stale",
