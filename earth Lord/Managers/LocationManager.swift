@@ -138,6 +138,15 @@ extension LocationManager: CLLocationManagerDelegate {
 
     /// 定位失败时调用
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        let clError = error as NSError
+
+        // 忽略临时错误（Code 0）和延迟错误，这些通常是模拟器的正常行为
+        if clError.code == 0 || clError.code == CLError.locationUnknown.rawValue {
+            print("ℹ️ 定位临时错误（可忽略）: \(error.localizedDescription)")
+            return
+        }
+
+        // 只记录真正需要用户关注的错误
         DispatchQueue.main.async {
             self.locationError = error.localizedDescription
         }
