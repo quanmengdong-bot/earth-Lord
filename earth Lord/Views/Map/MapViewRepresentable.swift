@@ -59,39 +59,29 @@ struct MapViewRepresentable: UIViewRepresentable {
 
         print("🗺️ updateUIView 被调用 - userLocation: \(userLocation != nil ? "有位置" : "无位置"), hasLocatedUser: \(hasLocatedUser)")
 
-        if let location = userLocation {
+        if let location = userLocation, !hasLocatedUser {
             print("🗺️ updateUIView: 当前位置坐标: \(location.latitude), \(location.longitude)")
+            print("🗺️ updateUIView: 检测到位置更新且未完成首次居中，准备居中地图")
 
-            if !hasLocatedUser {
-                print("🗺️ updateUIView: 检测到位置更新且未完成首次居中，准备居中地图")
+            // 使用更小的范围（200米），让居中效果更明显
+            let region = MKCoordinateRegion(
+                center: location,
+                latitudinalMeters: 200,  // 南北方向200米
+                longitudinalMeters: 200  // 东西方向200米
+            )
 
-                // 使用更小的范围（200米），让居中效果更明显
-                let region = MKCoordinateRegion(
-                    center: location,
-                    latitudinalMeters: 200,  // 南北方向200米
-                    longitudinalMeters: 200  // 东西方向200米
-                )
+            print("🗺️ updateUIView: 设置地图区域 center: \(region.center.latitude), \(region.center.longitude), span: 200m")
+            print("🗺️ updateUIView: 当前地图中心: \(uiView.region.center.latitude), \(uiView.region.center.longitude)")
 
-                print("🗺️ updateUIView: 设置地图区域 center: \(region.center.latitude), \(region.center.longitude), span: 200m")
+            // 只调用一次 setRegion，使用动画让效果更明显
+            uiView.setRegion(region, animated: true)
 
-                // 使用非动画方式立即居中，确保视觉效果明显
-                uiView.setRegion(region, animated: false)
-
-                // 延迟一帧后再用动画微调，确保居中完成
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    uiView.setRegion(region, animated: true)
-                }
-
-                // 标记已完成首次居中
-                DispatchQueue.main.async {
-                    self.hasLocatedUser = true
-                    print("🎯 updateUIView: 地图已手动居中，hasLocatedUser 设置为 true")
-                }
-            } else {
-                print("🗺️ updateUIView: 已完成首次居中，跳过自动居中")
+            // 等待地图区域设置完成后再标记（延迟 0.5 秒确保生效）
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                self.hasLocatedUser = true
+                print("🎯 updateUIView: 地图已手动居中，hasLocatedUser 设置为 true")
+                print("🗺️ updateUIView: 居中后地图中心: \(uiView.region.center.latitude), \(uiView.region.center.longitude)")
             }
-        } else {
-            print("🗺️ updateUIView: 用户位置为 nil，无法居中")
         }
     }
 
@@ -172,25 +162,23 @@ struct MapViewRepresentable: UIViewRepresentable {
             )
 
             print("🗺️ Coordinator: 设置地图区域 center: \(region.center.latitude), \(region.center.longitude), span: 200m")
+            print("🗺️ Coordinator: 当前地图中心: \(mapView.region.center.latitude), \(mapView.region.center.longitude)")
 
-            // 使用非动画方式立即居中，确保视觉效果明显
-            mapView.setRegion(region, animated: false)
+            // 只调用一次 setRegion，使用动画让效果更明显
+            mapView.setRegion(region, animated: true)
 
-            // 延迟一帧后再用动画微调
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                mapView.setRegion(region, animated: true)
-            }
-
-            // 更新外部状态
-            DispatchQueue.main.async {
+            // 等待地图区域设置完成后再标记（延迟 0.5 秒确保生效）
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                 self.parent.hasLocatedUser = true
                 print("🎯 Coordinator: 地图已自动居中，hasLocatedUser 设置为 true")
+                print("🗺️ Coordinator: 居中后地图中心: \(mapView.region.center.latitude), \(mapView.region.center.longitude)")
             }
         }
 
         /// 地图区域改变时调用
         func mapView(_ mapView: MKMapView, regionDidChangeAnimated animated: Bool) {
-            // 可以在这里处理地图移动后的逻辑
+            // 打印地图区域变化，用于调试居中是否生效
+            print("🗺️ regionDidChange: 地图区域已改变到 center: \(mapView.region.center.latitude), \(mapView.region.center.longitude), animated: \(animated)")
         }
 
         /// 地图加载完成时调用
