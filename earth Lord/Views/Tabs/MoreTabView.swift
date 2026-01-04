@@ -8,6 +8,8 @@
 import SwiftUI
 
 struct MoreTabView: View {
+    @ObservedObject private var languageManager = LanguageManager.shared
+
     var body: some View {
         NavigationView {
             ZStack {
@@ -24,11 +26,11 @@ struct MoreTabView: View {
                                     .frame(width: 30)
 
                                 VStack(alignment: .leading, spacing: 4) {
-                                    Text("Supabase 连接测试")
+                                    Text("Supabase 连接测试".localized)
                                         .font(.headline)
                                         .foregroundColor(ApocalypseTheme.textPrimary)
 
-                                    Text("测试后端连接状态")
+                                    Text("测试后端连接状态".localized)
                                         .font(.caption)
                                         .foregroundColor(ApocalypseTheme.textSecondary)
                                 }
@@ -36,13 +38,14 @@ struct MoreTabView: View {
                             .padding(.vertical, 8)
                         }
                     } header: {
-                        Text("开发工具")
+                        Text("开发工具".localized)
                             .foregroundColor(ApocalypseTheme.textSecondary)
                     }
                 }
                 .scrollContentBackground(.hidden)
             }
-            .navigationTitle("更多")
+            .navigationTitle("更多".localized)
+            .id(languageManager.currentLanguage) // 强制刷新
         }
     }
 }
