@@ -76,14 +76,6 @@ struct MapTabView: View {
                 locationManager.startUpdatingLocation()
             }
         }
-        .onChange(of: locationManager.userLocation) { oldValue, newValue in
-            // 当位置首次更新时，确保地图居中
-            if newValue != nil && !hasLocatedUser {
-                print("📍 MapTabView: 检测到位置首次更新，准备居中地图")
-                print("📍 MapTabView: 位置坐标: \(newValue!.latitude), \(newValue!.longitude)")
-                // hasLocatedUser 会在 MapViewRepresentable 中被设置为 true
-            }
-        }
         .id(languageManager.currentLanguage) // 强制刷新以支持语言切换
     }
 
