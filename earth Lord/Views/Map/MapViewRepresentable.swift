@@ -65,14 +65,22 @@ struct MapViewRepresentable: UIViewRepresentable {
             if !hasLocatedUser {
                 print("🗺️ updateUIView: 检测到位置更新且未完成首次居中，准备居中地图")
 
+                // 使用更小的范围（200米），让居中效果更明显
                 let region = MKCoordinateRegion(
                     center: location,
-                    latitudinalMeters: 1000,
-                    longitudinalMeters: 1000
+                    latitudinalMeters: 200,  // 南北方向200米
+                    longitudinalMeters: 200  // 东西方向200米
                 )
 
-                print("🗺️ updateUIView: 设置地图区域 center: \(region.center.latitude), \(region.center.longitude)")
-                uiView.setRegion(region, animated: true)
+                print("🗺️ updateUIView: 设置地图区域 center: \(region.center.latitude), \(region.center.longitude), span: 200m")
+
+                // 使用非动画方式立即居中，确保视觉效果明显
+                uiView.setRegion(region, animated: false)
+
+                // 延迟一帧后再用动画微调，确保居中完成
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    uiView.setRegion(region, animated: true)
+                }
 
                 // 标记已完成首次居中
                 DispatchQueue.main.async {
@@ -156,17 +164,22 @@ struct MapViewRepresentable: UIViewRepresentable {
 
             print("🗺️ Coordinator: 准备居中地图...")
 
-            // 创建居中区域（约1公里范围）
+            // 使用更小的范围（200米），让居中效果更明显
             let region = MKCoordinateRegion(
                 center: location.coordinate,
-                latitudinalMeters: 1000, // 南北方向1公里
-                longitudinalMeters: 1000 // 东西方向1公里
+                latitudinalMeters: 200,  // 南北方向200米
+                longitudinalMeters: 200  // 东西方向200米
             )
 
-            print("🗺️ Coordinator: 设置地图区域 center: \(region.center.latitude), \(region.center.longitude)")
+            print("🗺️ Coordinator: 设置地图区域 center: \(region.center.latitude), \(region.center.longitude), span: 200m")
 
-            // ⭐ 平滑居中地图到用户位置
-            mapView.setRegion(region, animated: true)
+            // 使用非动画方式立即居中，确保视觉效果明显
+            mapView.setRegion(region, animated: false)
+
+            // 延迟一帧后再用动画微调
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                mapView.setRegion(region, animated: true)
+            }
 
             // 更新外部状态
             DispatchQueue.main.async {
