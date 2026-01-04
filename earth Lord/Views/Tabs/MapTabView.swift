@@ -28,7 +28,10 @@ struct MapTabView: View {
             // MARK: 地图视图
             MapViewRepresentable(
                 userLocation: $locationManager.userLocation,
-                hasLocatedUser: $hasLocatedUser
+                hasLocatedUser: $hasLocatedUser,
+                trackingPath: $locationManager.pathCoordinates,
+                pathUpdateVersion: locationManager.pathUpdateVersion,
+                isTracking: locationManager.isTracking
             )
             .ignoresSafeArea()
 
@@ -57,14 +60,20 @@ struct MapTabView: View {
                 }
             }
 
-            // MARK: 右下角定位按钮
+            // MARK: 右下角按钮组
             VStack {
                 Spacer()
                 HStack {
                     Spacer()
-                    locateButton
-                        .padding(.trailing, 20)
-                        .padding(.bottom, 120) // 留出 Tab Bar 空间
+                    VStack(spacing: 12) {
+                        // 圈地按钮
+                        trackingButton
+
+                        // 定位按钮
+                        locateButton
+                    }
+                    .padding(.trailing, 20)
+                    .padding(.bottom, 120) // 留出 Tab Bar 空间
                 }
             }
         }
@@ -237,6 +246,52 @@ struct MapTabView: View {
         .cornerRadius(16)
         .shadow(color: .black.opacity(0.3), radius: 10, x: 0, y: 5)
         .padding(.horizontal)
+    }
+
+    /// 圈地按钮（右下角）
+    private var trackingButton: some View {
+        Button(action: {
+            if locationManager.isTracking {
+                // 正在追踪，点击停止
+                locationManager.stopPathTracking()
+            } else {
+                // 未追踪，点击开始
+                if locationManager.isAuthorized {
+                    locationManager.startPathTracking()
+                } else {
+                    // 未授权，请求权限
+                    locationManager.requestPermission()
+                }
+            }
+        }) {
+            HStack(spacing: 8) {
+                // 图标
+                Image(systemName: locationManager.isTracking ? "stop.fill" : "flag.fill")
+                    .font(.system(size: 16))
+                    .foregroundColor(.white)
+
+                // 文字
+                Text(locationManager.isTracking ? "停止圈地" : "开始圈地")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.white)
+
+                // 点数显示（追踪时）
+                if locationManager.isTracking {
+                    Text("(\(locationManager.pathCoordinates.count))")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.white.opacity(0.9))
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(
+                Capsule()
+                    .fill(locationManager.isTracking ?
+                          ApocalypseTheme.danger :
+                          ApocalypseTheme.primary)
+            )
+            .shadow(color: .black.opacity(0.3), radius: 5, x: 0, y: 2)
+        }
     }
 
     /// 定位按钮（右下角）

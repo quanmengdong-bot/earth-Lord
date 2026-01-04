@@ -7,8 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		DE7D2A3C2F0AA000007EC36A /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = DE7D2A3D2F0AA100007EC36A /* GoogleSignIn */; };
 		DE7D2A3B2F08B430007EC36A /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = DE7D2A3A2F08B430007EC36A /* Localizable.xcstrings */; };
+		DE7D2A3C2F0AA000007EC36A /* (null) in Frameworks */ = {isa = PBXBuildFile; };
 		DEA440DC2F03680C007F2534 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = DEA440DB2F03680C007F2534 /* Supabase */; };
 /* End PBXBuildFile section */
 
@@ -31,7 +31,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				DEA440DC2F03680C007F2534 /* Supabase in Frameworks */,
-				DE7D2A3C2F0AA000007EC36A /* GoogleSignIn in Frameworks */,
+				DE7D2A3C2F0AA000007EC36A /* (null) in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -76,7 +76,6 @@
 			name = "earth Lord";
 			packageProductDependencies = (
 				DEA440DB2F03680C007F2534 /* Supabase */,
-				DE7D2A3D2F0AA100007EC36A /* GoogleSignIn */,
 			);
 			productName = "earth Lord";
 			productReference = DEA440B62EFCD19F007F2534 /* earth Lord.app */;
@@ -276,18 +275,12 @@
 				DEVELOPMENT_TEAM = QBY75P33ZG;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleURLTypes = "{\n    CFBundleURLSchemes =     (\n        \"com.googleusercontent.apps.812902326396-ghc7gdq361p16akbagrjt0vohu5f73of\"\n    );\n}";
+				INFOPLIST_KEY_GIDClientID = "812902326396-ghc7gdq361p16akbagrjt0vohu5f73of.apps.googleusercontent.com";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "《地球新主》需要获取您的位置来显示您在末日世界中的坐标，帮助您探索和圈定领地。";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "《地球新主》需要获取您的位置来显示您在末日世界中的坐标，帮助您探索和圈定领地。";
-				INFOPLIST_KEY_GIDClientID = "812902326396-ghc7gdq361p16akbagrjt0vohu5f73of.apps.googleusercontent.com";
-				INFOPLIST_KEY_CFBundleURLTypes = (
-					{
-						CFBundleURLSchemes = (
-							"com.googleusercontent.apps.812902326396-ghc7gdq361p16akbagrjt0vohu5f73of",
-						);
-					},
-				);
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -317,18 +310,12 @@
 				DEVELOPMENT_TEAM = QBY75P33ZG;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleURLTypes = "{\n    CFBundleURLSchemes =     (\n        \"com.googleusercontent.apps.812902326396-ghc7gdq361p16akbagrjt0vohu5f73of\"\n    );\n}";
+				INFOPLIST_KEY_GIDClientID = "812902326396-ghc7gdq361p16akbagrjt0vohu5f73of.apps.googleusercontent.com";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "《地球新主》需要获取您的位置来显示您在末日世界中的坐标，帮助您探索和圈定领地。";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "《地球新主》需要获取您的位置来显示您在末日世界中的坐标，帮助您探索和圈定领地。";
-				INFOPLIST_KEY_GIDClientID = "812902326396-ghc7gdq361p16akbagrjt0vohu5f73of.apps.googleusercontent.com";
-				INFOPLIST_KEY_CFBundleURLTypes = (
-					{
-						CFBundleURLSchemes = (
-							"com.googleusercontent.apps.812902326396-ghc7gdq361p16akbagrjt0vohu5f73of",
-						);
-					},
-				);
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
