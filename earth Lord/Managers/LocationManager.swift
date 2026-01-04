@@ -122,9 +122,7 @@ class LocationManager: NSObject, ObservableObject {
         }
 
         // 确保定位服务正在运行
-        if !locationManager.isUpdatingLocation {
-            startUpdatingLocation()
-        }
+        startUpdatingLocation()
     }
 
     /// 停止路径追踪
