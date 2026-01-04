@@ -53,7 +53,7 @@ struct LoginView: View {
             } message: {
                 Text(authManager.errorMessage ?? "未知错误")
             }
-            .onChange(of: authManager.errorMessage) {
+            .onChange(of: authManager.errorMessage) { _ in
                 if authManager.errorMessage != nil {
                     showError = true
                 }

@@ -112,12 +112,12 @@ struct AuthView: View {
         .sheet(isPresented: $showForgotPassword) {
             forgotPasswordSheet
         }
-        .onChange(of: authManager.errorMessage) {
+        .onChange(of: authManager.errorMessage) { _ in
             if authManager.errorMessage != nil {
                 showError = true
             }
         }
-        .onChange(of: selectedTab) {
+        .onChange(of: selectedTab) { _ in
             // 切换 Tab 时重置状态
             resetAuthState()
         }

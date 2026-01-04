@@ -70,23 +70,23 @@ struct ForgotPasswordView: View {
         } message: {
             Text("您的密码已成功重置，请使用新密码登录")
         }
-        .onChange(of: authManager.errorMessage) {
+        .onChange(of: authManager.errorMessage) { _ in
             if let error = authManager.errorMessage {
                 errorMessage = error
                 showError = true
             }
         }
-        .onChange(of: authManager.otpSent) {
+        .onChange(of: authManager.otpSent) { _ in
             if authManager.otpSent && currentStep == .inputEmail {
                 currentStep = .verifyOTP
             }
         }
-        .onChange(of: authManager.otpVerified) {
+        .onChange(of: authManager.otpVerified) { _ in
             if authManager.otpVerified {
                 currentStep = .setNewPassword
             }
         }
-        .onChange(of: authManager.isAuthenticated) {
+        .onChange(of: authManager.isAuthenticated) { _ in
             if authManager.isAuthenticated && currentStep == .setNewPassword {
                 showSuccess = true
             }

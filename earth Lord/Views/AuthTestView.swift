@@ -60,7 +60,7 @@ struct AuthTestView: View {
         } message: {
             Text(alertMessage)
         }
-        .onChange(of: authManager.errorMessage) {
+        .onChange(of: authManager.errorMessage) { _ in
             if let error = authManager.errorMessage {
                 alertMessage = error
                 showAlert = true

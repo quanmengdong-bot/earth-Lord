@@ -63,23 +63,23 @@ struct RegisterView: View {
         } message: {
             Text(errorMessage)
         }
-        .onChange(of: authManager.errorMessage) {
+        .onChange(of: authManager.errorMessage) { _ in
             if let error = authManager.errorMessage {
                 errorMessage = error
                 showError = true
             }
         }
-        .onChange(of: authManager.otpSent) {
+        .onChange(of: authManager.otpSent) { _ in
             if authManager.otpSent {
                 currentStep = .verifyOTP
             }
         }
-        .onChange(of: authManager.otpVerified) {
+        .onChange(of: authManager.otpVerified) { _ in
             if authManager.otpVerified {
                 currentStep = .setPassword
             }
         }
-        .onChange(of: authManager.isAuthenticated) {
+        .onChange(of: authManager.isAuthenticated) { _ in
             if authManager.isAuthenticated {
                 // 注册成功，返回
                 dismiss()
