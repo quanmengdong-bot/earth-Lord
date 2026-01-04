@@ -56,22 +56,34 @@ struct MapViewRepresentable: UIViewRepresentable {
     func updateUIView(_ uiView: MKMapView, context: Context) {
         // 当用户位置更新且还未完成首次居中时，手动居中地图
         // 这对于模拟器特别重要，因为模拟器的位置服务可能不会触发 delegate 回调
-        if let location = userLocation, !hasLocatedUser {
-            print("🗺️ updateUIView: 检测到位置更新，手动居中地图")
-            print("🗺️ updateUIView: 位置坐标: \(location.latitude), \(location.longitude)")
 
-            let region = MKCoordinateRegion(
-                center: location,
-                latitudinalMeters: 1000,
-                longitudinalMeters: 1000
-            )
+        print("🗺️ updateUIView 被调用 - userLocation: \(userLocation != nil ? "有位置" : "无位置"), hasLocatedUser: \(hasLocatedUser)")
 
-            uiView.setRegion(region, animated: true)
+        if let location = userLocation {
+            print("🗺️ updateUIView: 当前位置坐标: \(location.latitude), \(location.longitude)")
 
-            // 标记已完成首次居中（直接修改 Binding，会触发父视图更新）
-            hasLocatedUser = true
+            if !hasLocatedUser {
+                print("🗺️ updateUIView: 检测到位置更新且未完成首次居中，准备居中地图")
 
-            print("🎯 updateUIView: 地图已手动居中到: \(location.latitude), \(location.longitude)")
+                let region = MKCoordinateRegion(
+                    center: location,
+                    latitudinalMeters: 1000,
+                    longitudinalMeters: 1000
+                )
+
+                print("🗺️ updateUIView: 设置地图区域 center: \(region.center.latitude), \(region.center.longitude)")
+                uiView.setRegion(region, animated: true)
+
+                // 标记已完成首次居中
+                DispatchQueue.main.async {
+                    self.hasLocatedUser = true
+                    print("🎯 updateUIView: 地图已手动居中，hasLocatedUser 设置为 true")
+                }
+            } else {
+                print("🗺️ updateUIView: 已完成首次居中，跳过自动居中")
+            }
+        } else {
+            print("🗺️ updateUIView: 用户位置为 nil，无法居中")
         }
     }
 
@@ -119,14 +131,21 @@ struct MapViewRepresentable: UIViewRepresentable {
         /// ⭐ 关键方法：用户位置更新时调用
         /// 这个方法会在 MKMapView 获取到用户位置时自动触发（主要用于真机）
         func mapView(_ mapView: MKMapView, didUpdate userLocation: MKUserLocation) {
+            print("🗺️ Coordinator: didUpdate 被调用")
+
             // 获取用户位置
-            guard let location = userLocation.location else { return }
+            guard let location = userLocation.location else {
+                print("🗺️ Coordinator: location 为 nil，跳过")
+                return
+            }
 
             print("🗺️ Coordinator: 用户位置更新: \(location.coordinate.latitude), \(location.coordinate.longitude)")
+            print("🗺️ Coordinator: 当前 hasLocatedUser = \(parent.hasLocatedUser)")
 
             // 更新绑定的位置坐标
             DispatchQueue.main.async {
                 self.parent.userLocation = location.coordinate
+                print("🗺️ Coordinator: 已更新 parent.userLocation")
             }
 
             // 如果已完成首次居中，不再自动居中（避免影响用户手动拖动）
@@ -135,6 +154,8 @@ struct MapViewRepresentable: UIViewRepresentable {
                 return
             }
 
+            print("🗺️ Coordinator: 准备居中地图...")
+
             // 创建居中区域（约1公里范围）
             let region = MKCoordinateRegion(
                 center: location.coordinate,
@@ -142,15 +163,16 @@ struct MapViewRepresentable: UIViewRepresentable {
                 longitudinalMeters: 1000 // 东西方向1公里
             )
 
+            print("🗺️ Coordinator: 设置地图区域 center: \(region.center.latitude), \(region.center.longitude)")
+
             // ⭐ 平滑居中地图到用户位置
             mapView.setRegion(region, animated: true)
 
             // 更新外部状态
             DispatchQueue.main.async {
                 self.parent.hasLocatedUser = true
+                print("🎯 Coordinator: 地图已自动居中，hasLocatedUser 设置为 true")
             }
-
-            print("🎯 Coordinator: 地图已自动居中到用户位置")
         }
 
         /// 地图区域改变时调用
