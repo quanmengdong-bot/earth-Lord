@@ -52,9 +52,27 @@ struct MapViewRepresentable: UIViewRepresentable {
         return mapView
     }
 
-    /// 更新 MKMapView（暂时无需实现）
+    /// 更新 MKMapView
     func updateUIView(_ uiView: MKMapView, context: Context) {
-        // 地图更新逻辑由 Coordinator 的 delegate 方法处理
+        // 当用户位置更新且还未完成首次居中时，手动居中地图
+        // 这对于模拟器特别重要，因为模拟器的位置服务可能不会触发 delegate 回调
+        if let location = userLocation, !hasLocatedUser {
+            print("🗺️ updateUIView: 检测到位置更新，手动居中地图")
+            print("🗺️ updateUIView: 位置坐标: \(location.latitude), \(location.longitude)")
+
+            let region = MKCoordinateRegion(
+                center: location,
+                latitudinalMeters: 1000,
+                longitudinalMeters: 1000
+            )
+
+            uiView.setRegion(region, animated: true)
+
+            // 标记已完成首次居中（直接修改 Binding，会触发父视图更新）
+            hasLocatedUser = true
+
+            print("🎯 updateUIView: 地图已手动居中到: \(location.latitude), \(location.longitude)")
+        }
     }
 
     /// 创建 Coordinator（处理 MKMapViewDelegate 回调）
@@ -90,9 +108,6 @@ struct MapViewRepresentable: UIViewRepresentable {
 
         var parent: MapViewRepresentable
 
-        /// 防止重复居中标志（⭐ 关键）
-        private var hasInitialCentered = false
-
         // MARK: - Initialization
 
         init(_ parent: MapViewRepresentable) {
@@ -102,12 +117,12 @@ struct MapViewRepresentable: UIViewRepresentable {
         // MARK: - MKMapViewDelegate Methods
 
         /// ⭐ 关键方法：用户位置更新时调用
-        /// 这个方法会在 MKMapView 获取到用户位置时自动触发
+        /// 这个方法会在 MKMapView 获取到用户位置时自动触发（主要用于真机）
         func mapView(_ mapView: MKMapView, didUpdate userLocation: MKUserLocation) {
             // 获取用户位置
             guard let location = userLocation.location else { return }
 
-            print("🗺️ 用户位置更新: \(location.coordinate.latitude), \(location.coordinate.longitude)")
+            print("🗺️ Coordinator: 用户位置更新: \(location.coordinate.latitude), \(location.coordinate.longitude)")
 
             // 更新绑定的位置坐标
             DispatchQueue.main.async {
@@ -115,7 +130,10 @@ struct MapViewRepresentable: UIViewRepresentable {
             }
 
             // 如果已完成首次居中，不再自动居中（避免影响用户手动拖动）
-            guard !hasInitialCentered else { return }
+            guard !parent.hasLocatedUser else {
+                print("🗺️ Coordinator: 已完成首次居中，跳过自动居中")
+                return
+            }
 
             // 创建居中区域（约1公里范围）
             let region = MKCoordinateRegion(
@@ -127,15 +145,12 @@ struct MapViewRepresentable: UIViewRepresentable {
             // ⭐ 平滑居中地图到用户位置
             mapView.setRegion(region, animated: true)
 
-            // 标记已完成首次居中
-            hasInitialCentered = true
-
             // 更新外部状态
             DispatchQueue.main.async {
                 self.parent.hasLocatedUser = true
             }
 
-            print("🎯 地图已自动居中到用户位置")
+            print("🎯 Coordinator: 地图已自动居中到用户位置")
         }
 
         /// 地图区域改变时调用
