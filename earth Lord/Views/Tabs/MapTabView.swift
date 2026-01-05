@@ -21,6 +21,9 @@ struct MapTabView: View {
     /// 是否已完成首次定位（防止重复居中）
     @State private var hasLocatedUser = false
 
+    /// 是否显示速度警告（Day16）
+    @State private var showSpeedWarning = false
+
     // MARK: - Body
 
     var body: some View {
@@ -31,13 +34,19 @@ struct MapTabView: View {
                 hasLocatedUser: $hasLocatedUser,
                 trackingPath: $locationManager.pathCoordinates,
                 pathUpdateVersion: locationManager.pathUpdateVersion,
-                isTracking: locationManager.isTracking
+                isTracking: locationManager.isTracking,
+                isPathClosed: locationManager.isPathClosed
             )
             .ignoresSafeArea()
 
-            // MARK: 顶部状态栏（定位权限提示）
+            // MARK: 顶部状态栏（定位权限提示 + 速度警告）
             VStack {
-                if locationManager.authorizationStatus == .notDetermined {
+                // Day16: 速度警告横幅（优先显示）
+                if showSpeedWarning, let warning = locationManager.speedWarning {
+                    speedWarningBanner(message: warning)
+                        .padding(.top, 60)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                } else if locationManager.authorizationStatus == .notDetermined {
                     // 未请求权限时的提示
                     requestPermissionBanner
                         .padding(.top, 60)
@@ -83,6 +92,22 @@ struct MapTabView: View {
                 locationManager.requestPermission()
             } else if locationManager.isAuthorized {
                 locationManager.startUpdatingLocation()
+            }
+        }
+        .onChange(of: locationManager.speedWarning) { _ in
+            // Day16: 监听速度警告变化
+            if locationManager.speedWarning != nil {
+                // 显示警告
+                withAnimation {
+                    showSpeedWarning = true
+                }
+
+                // 3 秒后自动隐藏
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+                    withAnimation {
+                        showSpeedWarning = false
+                    }
+                }
             }
         }
         .id(languageManager.currentLanguage) // 强制刷新以支持语言切换
@@ -198,6 +223,37 @@ struct MapTabView: View {
             ApocalypseTheme.danger.opacity(0.2)
         )
         .cornerRadius(12)
+        .padding(.horizontal)
+    }
+
+    /// Day16: 速度警告横幅
+    private func speedWarningBanner(message: String) -> some View {
+        HStack {
+            Image(systemName: "speedometer")
+                .foregroundColor(.white)
+                .font(.title2)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("速度警告")
+                    .font(.headline)
+                    .foregroundColor(.white)
+
+                Text(message)
+                    .font(.caption)
+                    .foregroundColor(.white.opacity(0.9))
+            }
+
+            Spacer()
+        }
+        .padding()
+        .background(
+            // 根据是否还在追踪选择颜色
+            locationManager.isTracking ?
+            ApocalypseTheme.warning.opacity(0.95) :
+            ApocalypseTheme.danger.opacity(0.95)
+        )
+        .cornerRadius(16)
+        .shadow(color: .black.opacity(0.3), radius: 10, x: 0, y: 5)
         .padding(.horizontal)
     }
 
