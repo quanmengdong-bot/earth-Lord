@@ -18,19 +18,19 @@ struct MoreTabView: View {
 
                 List {
                     Section {
-                        NavigationLink(destination: SupabaseTestView()) {
+                        NavigationLink(destination: TestMenuView()) {
                             HStack(spacing: 16) {
-                                Image(systemName: "network")
+                                Image(systemName: "hammer.circle")
                                     .font(.title3)
                                     .foregroundColor(ApocalypseTheme.primary)
                                     .frame(width: 30)
 
                                 VStack(alignment: .leading, spacing: 4) {
-                                    Text("Supabase 连接测试".localized)
+                                    Text("开发测试".localized)
                                         .font(.headline)
                                         .foregroundColor(ApocalypseTheme.textPrimary)
 
-                                    Text("测试后端连接状态".localized)
+                                    Text("Supabase 和圈地功能测试".localized)
                                         .font(.caption)
                                         .foregroundColor(ApocalypseTheme.textSecondary)
                                 }

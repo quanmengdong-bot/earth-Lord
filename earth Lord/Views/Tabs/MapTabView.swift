@@ -12,8 +12,8 @@ struct MapTabView: View {
 
     // MARK: - State Properties
 
-    /// 定位管理器
-    @StateObject private var locationManager = LocationManager()
+    /// 定位管理器（使用单例）
+    @ObservedObject private var locationManager = LocationManager.shared
 
     /// 语言管理器
     @ObservedObject private var languageManager = LanguageManager.shared

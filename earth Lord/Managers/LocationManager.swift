@@ -9,8 +9,12 @@ import Foundation
 import CoreLocation
 import Combine
 
-/// GPS 定位管理器
+/// GPS 定位管理器（单例模式）
 class LocationManager: NSObject, ObservableObject {
+
+    // MARK: - Singleton
+
+    static let shared = LocationManager()
 
     // MARK: - Published Properties
 
@@ -79,7 +83,7 @@ class LocationManager: NSObject, ObservableObject {
 
     // MARK: - Initialization
 
-    override init() {
+    private override init() {
         super.init()
 
         // 配置 LocationManager
@@ -133,6 +137,9 @@ class LocationManager: NSObject, ObservableObject {
         isTracking = true
         isPathClosed = false
 
+        // Day16B: 记录日志
+        TerritoryLogger.shared.log("开始圈地追踪", type: .info)
+
         // 启动定时器，每 2 秒检查一次位置
         pathUpdateTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
             self?.recordPathPoint()
@@ -146,6 +153,9 @@ class LocationManager: NSObject, ObservableObject {
     func stopPathTracking() {
         print("🛑 停止路径追踪，当前路径点数: \(pathCoordinates.count)")
         isTracking = false
+
+        // Day16B: 记录日志
+        TerritoryLogger.shared.log("停止追踪，共 \(pathCoordinates.count) 个点", type: .info)
 
         // 停止定时器
         pathUpdateTimer?.invalidate()
@@ -197,6 +207,9 @@ class LocationManager: NSObject, ObservableObject {
             lastLocationTimestamp = Date()
             print("📍 记录新路径点 #\(pathCoordinates.count): 距离上个点 \(Int(distance))米")
 
+            // Day16B: 记录日志
+            TerritoryLogger.shared.log("记录第 \(pathCoordinates.count) 个点，距上点 \(Int(distance))m", type: .info)
+
             // ⭐ Day16: 每次添加新坐标后检查闭环
             checkPathClosure()
         }
@@ -228,11 +241,17 @@ class LocationManager: NSObject, ObservableObject {
 
         print("🔍 闭环检测: 当前位置距离起点 \(Int(distanceToStart)) 米（阈值 \(Int(closureDistanceThreshold)) 米）")
 
+        // Day16B: 记录日志（点数足够且未闭环时）
+        TerritoryLogger.shared.log("距起点 \(Int(distanceToStart))m (需≤30m)", type: .info)
+
         // 判断是否闭环
         if distanceToStart <= closureDistanceThreshold {
             isPathClosed = true
             pathUpdateVersion += 1
             print("✅ 闭环检测成功！路径已闭合，共 \(pathCoordinates.count) 个点")
+
+            // Day16B: 记录成功日志
+            TerritoryLogger.shared.log("闭环成功！距起点 \(Int(distanceToStart))m", type: .success)
         } else {
             print("❌ 闭环检测失败: 距离起点还有 \(Int(distanceToStart - closureDistanceThreshold)) 米")
         }
@@ -273,6 +292,10 @@ class LocationManager: NSObject, ObservableObject {
                 self.stopPathTracking()
             }
             print("❌ 速度超限: \(String(format: "%.1f", speed)) km/h > 30 km/h，暂停追踪")
+
+            // Day16B: 记录错误日志
+            TerritoryLogger.shared.log("超速 \(Int(speed)) km/h，已停止追踪", type: .error)
+
             return false
         }
 
@@ -283,6 +306,10 @@ class LocationManager: NSObject, ObservableObject {
                 self.isOverSpeed = true
             }
             print("⚠️ 速度警告: \(String(format: "%.1f", speed)) km/h > 15 km/h")
+
+            // Day16B: 记录警告日志
+            TerritoryLogger.shared.log("速度较快 \(Int(speed)) km/h", type: .warning)
+
             return false
         }
 
