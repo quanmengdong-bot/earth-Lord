@@ -24,6 +24,9 @@ struct MapTabView: View {
     /// 是否显示速度警告（Day16）
     @State private var showSpeedWarning = false
 
+    /// 是否显示验证结果横幅（Day17）
+    @State private var showValidationBanner = false
+
     // MARK: - Body
 
     var body: some View {
@@ -39,10 +42,16 @@ struct MapTabView: View {
             )
             .ignoresSafeArea()
 
-            // MARK: 顶部状态栏（定位权限提示 + 速度警告）
+            // MARK: 顶部状态栏（定位权限提示 + 速度警告 + 验证结果）
             VStack {
+                // Day17: 验证结果横幅（最高优先级）
+                if showValidationBanner {
+                    validationResultBanner
+                        .padding(.top, 60)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
                 // Day16: 速度警告横幅（优先显示）
-                if showSpeedWarning, let warning = locationManager.speedWarning {
+                else if showSpeedWarning, let warning = locationManager.speedWarning {
                     speedWarningBanner(message: warning)
                         .padding(.top, 60)
                         .transition(.move(edge: .top).combined(with: .opacity))
@@ -106,6 +115,24 @@ struct MapTabView: View {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
                     withAnimation {
                         showSpeedWarning = false
+                    }
+                }
+            }
+        }
+        .onChange(of: locationManager.isPathClosed) { isClosed in
+            // Day17: 监听闭环状态变化（闭环后显示验证结果）
+            if isClosed {
+                // 0.1 秒后显示验证结果（等待验证完成）
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    withAnimation {
+                        showValidationBanner = true
+                    }
+
+                    // 3 秒后自动隐藏
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+                        withAnimation {
+                            showValidationBanner = false
+                        }
                     }
                 }
             }
@@ -251,6 +278,44 @@ struct MapTabView: View {
             locationManager.isTracking ?
             ApocalypseTheme.warning.opacity(0.95) :
             ApocalypseTheme.danger.opacity(0.95)
+        )
+        .cornerRadius(16)
+        .shadow(color: .black.opacity(0.3), radius: 10, x: 0, y: 5)
+        .padding(.horizontal)
+    }
+
+    /// Day17: 验证结果横幅
+    private var validationResultBanner: some View {
+        HStack(spacing: 12) {
+            Image(systemName: locationManager.territoryValidationPassed
+                  ? "checkmark.circle.fill"
+                  : "xmark.circle.fill")
+                .foregroundColor(.white)
+                .font(.title2)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(locationManager.territoryValidationPassed ? "圈地成功！" : "圈地失败")
+                    .font(.headline)
+                    .foregroundColor(.white)
+
+                if locationManager.territoryValidationPassed {
+                    Text("领地面积: \(String(format: "%.0f", locationManager.calculatedArea)) m²")
+                        .font(.caption)
+                        .foregroundColor(.white.opacity(0.9))
+                } else {
+                    Text(locationManager.territoryValidationError ?? "验证失败")
+                        .font(.caption)
+                        .foregroundColor(.white.opacity(0.9))
+                }
+            }
+
+            Spacer()
+        }
+        .padding()
+        .background(
+            locationManager.territoryValidationPassed
+            ? Color.green.opacity(0.95)
+            : Color.red.opacity(0.95)
         )
         .cornerRadius(16)
         .shadow(color: .black.opacity(0.3), radius: 10, x: 0, y: 5)
