@@ -15,6 +15,9 @@ struct MapTabView: View {
     /// 定位管理器（使用单例）
     @ObservedObject private var locationManager = LocationManager.shared
 
+    /// 领地管理器（Day17）
+    @ObservedObject private var territoryManager = TerritoryManager.shared
+
     /// 语言管理器
     @ObservedObject private var languageManager = LanguageManager.shared
 
@@ -26,6 +29,18 @@ struct MapTabView: View {
 
     /// 是否显示验证结果横幅（Day17）
     @State private var showValidationBanner = false
+
+    /// 是否显示保存领地对话框（Day17）
+    @State private var showSaveDialog = false
+
+    /// 领地名称输入（Day17）
+    @State private var territoryName = ""
+
+    /// 是否正在保存（Day17）
+    @State private var isSaving = false
+
+    /// 保存成功提示（Day17）
+    @State private var showSaveSuccess = false
 
     // MARK: - Body
 
@@ -128,16 +143,101 @@ struct MapTabView: View {
                         showValidationBanner = true
                     }
 
-                    // 3 秒后自动隐藏
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
-                        withAnimation {
-                            showValidationBanner = false
+                    // 如果验证通过，1.5秒后弹出保存对话框
+                    if locationManager.territoryValidationPassed {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                            withAnimation {
+                                showValidationBanner = false
+                            }
+                            // 生成默认名称并显示保存对话框
+                            territoryName = territoryManager.generateDefaultName()
+                            showSaveDialog = true
+                        }
+                    } else {
+                        // 验证失败，3秒后自动隐藏
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+                            withAnimation {
+                                showValidationBanner = false
+                            }
                         }
                     }
                 }
             }
         }
+        .alert("保存领地", isPresented: $showSaveDialog) {
+            TextField("领地名称", text: $territoryName)
+            Button("取消", role: .cancel) {
+                // 清除路径
+                locationManager.clearPath()
+            }
+            Button("保存") {
+                saveTerritory()
+            }
+            .disabled(territoryName.trimmingCharacters(in: .whitespaces).isEmpty)
+        } message: {
+            Text("请为你的新领地命名\n面积: \(String(format: "%.0f", locationManager.calculatedArea)) m²")
+        }
+        .overlay {
+            // Day17: 保存成功提示
+            if showSaveSuccess {
+                VStack {
+                    Spacer()
+                    HStack {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(.white)
+                        Text("领地保存成功！")
+                            .foregroundColor(.white)
+                            .fontWeight(.semibold)
+                    }
+                    .padding()
+                    .background(Color.green.opacity(0.95))
+                    .cornerRadius(12)
+                    .shadow(radius: 10)
+                    .padding(.bottom, 150)
+                }
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
         .id(languageManager.currentLanguage) // 强制刷新以支持语言切换
+    }
+
+    // MARK: - Day17: 保存领地方法
+
+    private func saveTerritory() {
+        guard !territoryName.trimmingCharacters(in: .whitespaces).isEmpty else {
+            return
+        }
+
+        isSaving = true
+
+        Task {
+            let result = await territoryManager.saveTerritory(
+                name: territoryName.trimmingCharacters(in: .whitespaces),
+                path: locationManager.pathCoordinates,
+                area: locationManager.calculatedArea
+            )
+
+            await MainActor.run {
+                isSaving = false
+
+                if result != nil {
+                    // 保存成功
+                    withAnimation {
+                        showSaveSuccess = true
+                    }
+
+                    // 2秒后隐藏成功提示
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                        withAnimation {
+                            showSaveSuccess = false
+                        }
+                    }
+
+                    // 清除路径
+                    locationManager.clearPath()
+                }
+            }
+        }
     }
 
     // MARK: - Subviews
