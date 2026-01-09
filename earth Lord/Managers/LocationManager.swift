@@ -70,17 +70,17 @@ class LocationManager: NSObject, ObservableObject {
 
     // MARK: - Constants
 
-    /// 闭环距离阈值（米）
-    private let closureDistanceThreshold: Double = 30.0
+    /// 闭环距离阈值（米）- 放宽到 50 米，更容易闭合
+    private let closureDistanceThreshold: Double = 50.0
 
-    /// 最少路径点数
-    private let minimumPathPoints: Int = 10
+    /// 最少路径点数 - 降低到 5 个点
+    private let minimumPathPoints: Int = 5
 
-    /// 最少路径总长度（米）- Day17
-    private let minimumTotalDistance: Double = 50.0
+    /// 最少路径总长度（米）- Day17，降低到 30 米
+    private let minimumTotalDistance: Double = 30.0
 
-    /// 最小封闭面积（平方米）- Day17
-    private let minimumEnclosedArea: Double = 100.0
+    /// 最小封闭面积（平方米）- Day17，降低到 50 平方米（约 7m x 7m）
+    private let minimumEnclosedArea: Double = 50.0
 
     // MARK: - Computed Properties
 
@@ -519,12 +519,18 @@ class LocationManager: NSObject, ObservableObject {
 
     /// 验证移动速度（防止作弊）
     /// - Parameter newLocation: 新位置
-    /// - Returns: true 表示速度正常，false 表示超速
+    /// - Returns: true 表示速度正常，false 表示超速需要停止追踪
     private func validateMovementSpeed(newLocation: CLLocation) -> Bool {
         // 第一个点或没有上次时间戳，直接通过
         guard let lastTimestamp = lastLocationTimestamp,
               let lastCoordinate = pathCoordinates.last else {
             return true
+        }
+
+        // ⭐ GPS 精度过滤：忽略精度差的位置（> 20米）
+        if newLocation.horizontalAccuracy > 20 {
+            print("📍 GPS 精度较差: \(Int(newLocation.horizontalAccuracy))m，跳过此点")
+            return false
         }
 
         // 计算距离（米）
@@ -540,39 +546,39 @@ class LocationManager: NSObject, ObservableObject {
         // 计算速度（km/h）
         let speed = (distance / timeInterval) * 3.6
 
-        print("🚗 速度检测: \(String(format: "%.1f", speed)) km/h")
+        print("🚗 速度检测: \(String(format: "%.1f", speed)) km/h (距离: \(Int(distance))m, 时间: \(Int(timeInterval))s)")
 
-        // 速度 > 30 km/h → 暂停追踪
-        if speed > 30 {
+        // ⭐ 速度 > 50 km/h → 可能是 GPS 跳点或开车作弊，暂停追踪
+        if speed > 50 {
             DispatchQueue.main.async {
-                self.speedWarning = "⚠️ 速度过快！已暂停追踪（\(Int(speed)) km/h）"
+                self.speedWarning = "⚠️ 速度异常！已暂停追踪（\(Int(speed)) km/h）"
                 self.isOverSpeed = true
                 self.stopPathTracking()
             }
-            print("❌ 速度超限: \(String(format: "%.1f", speed)) km/h > 30 km/h，暂停追踪")
+            print("❌ 速度异常: \(String(format: "%.1f", speed)) km/h > 50 km/h，暂停追踪")
 
             // Day16B: 记录错误日志
-            TerritoryLogger.shared.log("超速 \(Int(speed)) km/h，已停止追踪", type: .error)
+            TerritoryLogger.shared.log("速度异常 \(Int(speed)) km/h，已停止追踪", type: .error)
 
             return false
         }
 
-        // 速度 > 15 km/h → 警告
-        if speed > 15 {
+        // ⭐ 速度 > 25 km/h → 警告但仍然记录点（可能是 GPS 跳动）
+        if speed > 25 {
             DispatchQueue.main.async {
-                self.speedWarning = "⚠️ 速度过快！请步行（\(Int(speed)) km/h）"
+                self.speedWarning = "⚠️ 移动较快（\(Int(speed)) km/h）"
                 self.isOverSpeed = true
             }
-            print("⚠️ 速度警告: \(String(format: "%.1f", speed)) km/h > 15 km/h")
+            print("⚠️ 速度警告: \(String(format: "%.1f", speed)) km/h > 25 km/h")
 
             // Day16B: 记录警告日志
             TerritoryLogger.shared.log("速度较快 \(Int(speed)) km/h", type: .warning)
 
-            return false
+            // ⭐ 警告但仍然记录点，不要 return false
         }
 
         // 速度正常，清除警告
-        if isOverSpeed {
+        if isOverSpeed && speed <= 25 {
             DispatchQueue.main.async {
                 self.speedWarning = nil
                 self.isOverSpeed = false
