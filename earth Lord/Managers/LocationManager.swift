@@ -73,8 +73,8 @@ class LocationManager: NSObject, ObservableObject {
     /// 闭环距离阈值（米）- 放宽到 50 米，更容易闭合
     private let closureDistanceThreshold: Double = 50.0
 
-    /// 最少路径点数 - 降低到 5 个点
-    private let minimumPathPoints: Int = 5
+    /// 最少路径点数 - 需要至少 8 个点才能形成有效领地
+    private let minimumPathPoints: Int = 8
 
     /// 最少路径总长度（米）- Day17，降低到 30 米
     private let minimumTotalDistance: Double = 30.0
@@ -302,17 +302,20 @@ class LocationManager: NSObject, ObservableObject {
 
     /// 计算多边形面积（平方米）- 使用 Shoelace 公式 + 球面校正
     private func calculatePolygonArea() -> Double {
-        guard pathCoordinates.count >= 3 else {
+        // ⭐ 防御性编程：深拷贝数组
+        let pathSnapshot = Array(pathCoordinates)
+
+        guard pathSnapshot.count >= 3 else {
+            print("📐 面积计算: 点数不足 \(pathSnapshot.count)，返回 0")
             return 0
         }
 
-        let earthRadius: Double = 6371000 // 地球平均半径（米）
-
         var area: Double = 0
 
-        for i in 0..<pathCoordinates.count {
-            let current = pathCoordinates[i]
-            let next = pathCoordinates[(i + 1) % pathCoordinates.count]
+        for i in 0..<pathSnapshot.count {
+            let current = pathSnapshot[i]
+            let nextIndex = (i + 1) % pathSnapshot.count
+            let next = pathSnapshot[nextIndex]
 
             // Shoelace 公式：Area = 0.5 * |Σ(xi * yi+1 - xi+1 * yi)|
             // 注意：经度 = X，纬度 = Y
@@ -325,13 +328,14 @@ class LocationManager: NSObject, ObservableObject {
         // 球面校正：将度数转换为实际距离
         // 1 度纬度 ≈ 111,111 米
         // 1 度经度 ≈ 111,111 * cos(纬度) 米
-        let avgLatitude = pathCoordinates.map { $0.latitude }.reduce(0, +) / Double(pathCoordinates.count)
+        let avgLatitude = pathSnapshot.map { $0.latitude }.reduce(0, +) / Double(pathSnapshot.count)
         let latitudeCorrection = 111111.0 // 米/度
         let longitudeCorrection = 111111.0 * cos(avgLatitude * .pi / 180.0) // 米/度
 
         // 校正面积（度² → 米²）
         area = area * latitudeCorrection * longitudeCorrection
 
+        print("📐 面积计算: \(Int(area)) m²")
         return area
     }
 
@@ -363,24 +367,24 @@ class LocationManager: NSObject, ObservableObject {
     /// 检测路径是否存在自相交
     /// - Returns: true 表示存在自相交
     func hasPathSelfIntersection() -> Bool {
+        // ⭐ 防御性编程：在主线程安全地拷贝数组
+        var pathSnapshot: [CLLocationCoordinate2D] = []
+
+        // 深拷贝数组（避免并发修改）
+        pathSnapshot = Array(pathCoordinates)
+
         // 防御性检查：至少需要 4 个点才能形成自相交
-        guard pathCoordinates.count >= 4 else {
-            return false
-        }
-
-        // ⭐ 防御性编程：深拷贝数组（避免并发修改）
-        let pathSnapshot = Array(pathCoordinates)
-
-        // 再次检查（防止拷贝后数组为空）
         guard pathSnapshot.count >= 4 else {
+            print("🔍 自交检测: 点数不足 \(pathSnapshot.count)，跳过")
             return false
         }
 
         // 计算线段数量
         let segmentCount = pathSnapshot.count - 1
 
-        // 防御性检查：至少需要 2 条线段
-        guard segmentCount >= 2 else {
+        // 防御性检查：至少需要 3 条线段才可能自相交
+        guard segmentCount >= 3 else {
+            print("🔍 自交检测: 线段数不足 \(segmentCount)，跳过")
             return false
         }
 
@@ -389,9 +393,10 @@ class LocationManager: NSObject, ObservableObject {
         let skipTailCount = 2
 
         // 遍历所有线段对
-        for i in 0..<segmentCount {
+        for i in 0..<(segmentCount - 2) {
             // 防御性检查：确保索引有效
-            guard i < pathSnapshot.count - 1 else {
+            guard i >= 0, i + 1 < pathSnapshot.count else {
+                print("⚠️ 自交检测: 索引越界 i=\(i), count=\(pathSnapshot.count)")
                 break
             }
 
@@ -401,7 +406,8 @@ class LocationManager: NSObject, ObservableObject {
             // 检测与后续非相邻线段的相交
             for j in (i + 2)..<segmentCount {
                 // 防御性检查：确保索引有效
-                guard j < pathSnapshot.count - 1 else {
+                guard j >= 0, j + 1 < pathSnapshot.count else {
+                    print("⚠️ 自交检测: 索引越界 j=\(j), count=\(pathSnapshot.count)")
                     break
                 }
 
