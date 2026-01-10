@@ -155,8 +155,8 @@ class LocationManager: NSObject, ObservableObject {
         // Day16B: 记录日志
         TerritoryLogger.shared.log("开始圈地追踪", type: .info)
 
-        // 启动定时器，每 2 秒检查一次位置
-        pathUpdateTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
+        // 启动定时器，每 1 秒检查一次位置（更频繁记录）
+        pathUpdateTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
             self?.recordPathPoint()
         }
 
@@ -215,8 +215,8 @@ class LocationManager: NSObject, ObservableObject {
         let lastLocation = CLLocation(latitude: lastCoordinate.latitude, longitude: lastCoordinate.longitude)
         let distance = location.distance(from: lastLocation)
 
-        // 只有移动超过 10 米才记录新点
-        if distance > 10 {
+        // 只有移动超过 5 米才记录新点（更细致的路径）
+        if distance > 5 {
             pathCoordinates.append(coordinate)
             pathUpdateVersion += 1
             lastLocationTimestamp = Date()
@@ -527,9 +527,9 @@ class LocationManager: NSObject, ObservableObject {
             return true
         }
 
-        // ⭐ GPS 精度过滤：忽略精度差的位置（> 20米）
-        if newLocation.horizontalAccuracy > 20 {
-            print("📍 GPS 精度较差: \(Int(newLocation.horizontalAccuracy))m，跳过此点")
+        // ⭐ GPS 精度过滤：只忽略非常差的位置（> 100米或无效）
+        if newLocation.horizontalAccuracy < 0 || newLocation.horizontalAccuracy > 100 {
+            print("📍 GPS 精度无效或过差: \(Int(newLocation.horizontalAccuracy))m，跳过此点")
             return false
         }
 
