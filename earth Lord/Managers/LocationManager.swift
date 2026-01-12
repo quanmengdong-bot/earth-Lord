@@ -8,6 +8,7 @@
 import Foundation
 import CoreLocation
 import Combine
+import UIKit
 
 /// GPS 定位管理器（单例模式）
 class LocationManager: NSObject, ObservableObject {
@@ -53,6 +54,12 @@ class LocationManager: NSObject, ObservableObject {
 
     /// 计算出的领地面积（平方米）（Day17）
     @Published var calculatedArea: Double = 0
+
+    /// Day19: 碰撞检测结果
+    @Published var collisionResult: CollisionResult = .safe
+
+    /// Day19: 是否有碰撞警告需要显示
+    @Published var hasCollisionWarning: Bool = false
 
     // MARK: - Private Properties
 
@@ -164,10 +171,9 @@ class LocationManager: NSObject, ObservableObject {
         startUpdatingLocation()
     }
 
-    /// 停止路径追踪
+    /// 停止路径追踪并重置所有状态
     func stopPathTracking() {
         print("🛑 停止路径追踪，当前路径点数: \(pathCoordinates.count)")
-        isTracking = false
 
         // Day16B: 记录日志
         TerritoryLogger.shared.log("停止追踪，共 \(pathCoordinates.count) 个点", type: .info)
@@ -175,6 +181,23 @@ class LocationManager: NSObject, ObservableObject {
         // 停止定时器
         pathUpdateTimer?.invalidate()
         pathUpdateTimer = nil
+
+        // ⭐ Day18: 重置所有追踪相关状态
+        isTracking = false
+        territoryValidationPassed = false
+        territoryValidationError = nil
+        calculatedArea = 0
+        pathCoordinates.removeAll()
+        pathUpdateVersion += 1
+        isPathClosed = false
+        speedWarning = nil
+        isOverSpeed = false
+
+        // ⭐ Day19: 重置碰撞检测状态
+        collisionResult = .safe
+        hasCollisionWarning = false
+
+        print("✅ 追踪状态已完全重置")
     }
 
     /// 清除路径
@@ -225,8 +248,115 @@ class LocationManager: NSObject, ObservableObject {
             // Day16B: 记录日志
             TerritoryLogger.shared.log("记录第 \(pathCoordinates.count) 个点，距上点 \(Int(distance))m", type: .info)
 
+            // ⭐ Day19: 碰撞检测
+            checkCollision()
+
             // ⭐ Day16: 每次添加新坐标后检查闭环
             checkPathClosure()
+        }
+    }
+
+    // MARK: - Day19: 碰撞检测
+
+    /// 执行碰撞检测
+    private func checkCollision() {
+        // 获取当前用户 ID
+        guard let currentUserId = AuthManager.shared.currentUser?.id else {
+            print("⚠️ 碰撞检测：用户未登录")
+            return
+        }
+
+        // 在主线程异步执行碰撞检测（因为 TerritoryManager 是 @MainActor）
+        Task { @MainActor in
+            let result = TerritoryManager.shared.checkPathCollisionComprehensive(
+                path: self.pathCoordinates,
+                currentUserId: currentUserId
+            )
+
+            // 更新碰撞检测结果
+            self.collisionResult = result
+            self.hasCollisionWarning = result.warningLevel != .safe
+
+            // 根据预警级别触发震动和处理
+            switch result.warningLevel {
+            case .safe:
+                // 安全，无需处理
+                break
+
+            case .caution:
+                // 注意（50-100m）- 轻震 1 次
+                print("⚠️ 碰撞检测：注意 - \(result.message ?? "")")
+                self.triggerHapticFeedback(level: .caution)
+
+            case .warning:
+                // 警告（25-50m）- 中震 2 次
+                print("⚠️ 碰撞检测：警告 - \(result.message ?? "")")
+                self.triggerHapticFeedback(level: .warning)
+
+            case .danger:
+                // 危险（<25m）- 强震 3 次
+                print("🔴 碰撞检测：危险 - \(result.message ?? "")")
+                self.triggerHapticFeedback(level: .danger)
+
+            case .violation:
+                // 违规 - 错误震动 + 停止圈地
+                print("🚫 碰撞检测：发生违规！停止圈地")
+                TerritoryLogger.shared.log("碰撞违规：\(result.message ?? "未知")", type: .error)
+                self.triggerHapticFeedback(level: .violation)
+
+                // 停止追踪但保留路径显示和警告横幅
+                self.isTracking = false
+                self.pathUpdateTimer?.invalidate()
+                self.pathUpdateTimer = nil
+
+                // 5秒后清除警告状态
+                DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+                    self.hasCollisionWarning = false
+                    self.collisionResult = .safe
+                }
+            }
+        }
+    }
+
+    /// Day19: 触发震动反馈
+    private func triggerHapticFeedback(level: WarningLevel) {
+        switch level {
+        case .safe:
+            // 安全：无震动
+            break
+
+        case .caution:
+            // 注意：轻震 1 次
+            let generator = UINotificationFeedbackGenerator()
+            generator.prepare()
+            generator.notificationOccurred(.warning)
+
+        case .warning:
+            // 警告：中震 2 次
+            let generator = UIImpactFeedbackGenerator(style: .medium)
+            generator.prepare()
+            generator.impactOccurred()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                generator.impactOccurred()
+            }
+
+        case .danger:
+            // 危险：强震 3 次
+            let generator = UIImpactFeedbackGenerator(style: .heavy)
+            generator.prepare()
+            generator.impactOccurred()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                generator.impactOccurred()
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                generator.impactOccurred()
+            }
+
+        case .violation:
+            // 违规：错误震动
+            let generator = UINotificationFeedbackGenerator()
+            generator.prepare()
+            generator.notificationOccurred(.error)
         }
     }
 

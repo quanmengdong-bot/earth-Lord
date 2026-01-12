@@ -21,6 +21,15 @@ struct MapTabView: View {
     /// 语言管理器
     @ObservedObject private var languageManager = LanguageManager.shared
 
+    /// 认证管理器（Day18: 获取当前用户 ID）
+    @ObservedObject private var authManager = AuthManager.shared
+
+    /// Day18: 已加载的领地列表
+    @State private var territories: [Territory] = []
+
+    /// Day18: 领地版本号（用于触发地图更新）
+    @State private var territoriesVersion: Int = 0
+
     /// 是否已完成首次定位（防止重复居中）
     @State private var hasLocatedUser = false
 
@@ -42,6 +51,12 @@ struct MapTabView: View {
     /// 保存成功提示（Day17）
     @State private var showSaveSuccess = false
 
+    /// 保存失败提示（Day18）
+    @State private var showSaveError = false
+
+    /// 错误信息（Day18）
+    @State private var saveErrorMessage = ""
+
     // MARK: - Body
 
     var body: some View {
@@ -53,11 +68,14 @@ struct MapTabView: View {
                 trackingPath: $locationManager.pathCoordinates,
                 pathUpdateVersion: locationManager.pathUpdateVersion,
                 isTracking: locationManager.isTracking,
-                isPathClosed: locationManager.isPathClosed
+                isPathClosed: locationManager.isPathClosed,
+                territories: territories,
+                currentUserId: authManager.currentUser?.id,
+                territoriesVersion: territoriesVersion
             )
             .ignoresSafeArea()
 
-            // MARK: 顶部状态栏（定位权限提示 + 速度警告 + 验证结果）
+            // MARK: 顶部状态栏（定位权限提示 + 速度警告 + 验证结果 + 碰撞警告）
             VStack {
                 // Day17: 验证结果横幅（最高优先级）
                 if showValidationBanner {
@@ -65,7 +83,13 @@ struct MapTabView: View {
                         .padding(.top, 60)
                         .transition(.move(edge: .top).combined(with: .opacity))
                 }
-                // Day16: 速度警告横幅（优先显示）
+                // Day19: 碰撞警告横幅（第二优先级）
+                else if locationManager.hasCollisionWarning {
+                    collisionWarningBanner
+                        .padding(.top, 60)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
+                // Day16: 速度警告横幅
                 else if showSpeedWarning, let warning = locationManager.speedWarning {
                     speedWarningBanner(message: warning)
                         .padding(.top, 60)
@@ -117,6 +141,11 @@ struct MapTabView: View {
             } else if locationManager.isAuthorized {
                 locationManager.startUpdatingLocation()
             }
+
+            // Day18: 加载所有领地
+            Task {
+                await loadTerritories()
+            }
         }
         .onChange(of: locationManager.speedWarning) { _ in
             // Day16: 监听速度警告变化
@@ -135,57 +164,63 @@ struct MapTabView: View {
             }
         }
         .onChange(of: locationManager.isPathClosed) { isClosed in
-            // Day17: 监听闭环状态变化（闭环后显示验证结果）
+            // Day17: 监听闭环状态变化（闭环后显示验证横幅）
             if isClosed {
-                // 0.1 秒后显示验证结果（等待验证完成）
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                print("🔔 MapTabView: 检测到闭环，显示验证横幅")
+                withAnimation {
+                    showValidationBanner = true
+                }
+            }
+        }
+        .onChange(of: locationManager.territoryValidationPassed) { passed in
+            // ⭐ Day18: 直接监听验证结果，避免时序问题
+            print("🔔 MapTabView: 验证状态变化 -> \(passed)")
+            if passed {
+                // 验证通过，1.5秒后弹出保存对话框
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                     withAnimation {
-                        showValidationBanner = true
+                        showValidationBanner = false
                     }
-
-                    // 如果验证通过，1.5秒后弹出保存对话框
-                    if locationManager.territoryValidationPassed {
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                            withAnimation {
-                                showValidationBanner = false
-                            }
-                            // 生成默认名称并显示保存对话框
-                            territoryName = territoryManager.generateDefaultName()
-                            showSaveDialog = true
-                        }
-                    } else {
-                        // 验证失败，3秒后自动隐藏
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
-                            withAnimation {
-                                showValidationBanner = false
-                            }
-                        }
+                    // 生成默认名称并显示保存对话框
+                    territoryName = territoryManager.generateDefaultName()
+                    showSaveDialog = true
+                    print("📝 MapTabView: 弹出保存对话框")
+                }
+            }
+        }
+        .onChange(of: locationManager.territoryValidationError) { error in
+            // Day18: 监听验证失败
+            if error != nil && !locationManager.territoryValidationPassed {
+                print("🔔 MapTabView: 验证失败 -> \(error ?? "")")
+                // 验证失败，3秒后自动隐藏横幅
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+                    withAnimation {
+                        showValidationBanner = false
                     }
                 }
             }
         }
-        .alert("保存领地", isPresented: $showSaveDialog) {
-            TextField("领地名称", text: $territoryName)
+        .alert("确认登记领地", isPresented: $showSaveDialog) {
+            TextField("领地名称（可选）", text: $territoryName)
             Button("取消", role: .cancel) {
-                // 清除路径
-                locationManager.clearPath()
+                // ⭐ Day18: 取消时停止追踪并重置所有状态
+                locationManager.stopPathTracking()
             }
-            Button("保存") {
-                saveTerritory()
+            Button("确认登记") {
+                uploadCurrentTerritory()
             }
-            .disabled(territoryName.trimmingCharacters(in: .whitespaces).isEmpty)
         } message: {
-            Text("请为你的新领地命名\n面积: \(String(format: "%.0f", locationManager.calculatedArea)) m²")
+            Text("领地面积: \(String(format: "%.0f", locationManager.calculatedArea)) m²\n确认后将上传到服务器")
         }
         .overlay {
-            // Day17: 保存成功提示
+            // Day18: 上传成功提示
             if showSaveSuccess {
                 VStack {
                     Spacer()
                     HStack {
                         Image(systemName: "checkmark.circle.fill")
                             .foregroundColor(.white)
-                        Text("领地保存成功！")
+                        Text("领地登记成功！")
                             .foregroundColor(.white)
                             .fontWeight(.semibold)
                     }
@@ -197,31 +232,85 @@ struct MapTabView: View {
                 }
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
+
+            // Day18: 上传失败提示
+            if showSaveError {
+                VStack {
+                    Spacer()
+                    VStack(spacing: 8) {
+                        HStack {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundColor(.white)
+                            Text("上传失败")
+                                .foregroundColor(.white)
+                                .fontWeight(.semibold)
+                        }
+                        Text(saveErrorMessage)
+                            .font(.caption)
+                            .foregroundColor(.white.opacity(0.9))
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding()
+                    .background(Color.red.opacity(0.95))
+                    .cornerRadius(12)
+                    .shadow(radius: 10)
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 150)
+                }
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
         }
         .id(languageManager.currentLanguage) // 强制刷新以支持语言切换
     }
 
-    // MARK: - Day17: 保存领地方法
+    // MARK: - Day18: 领地相关方法
 
-    private func saveTerritory() {
-        guard !territoryName.trimmingCharacters(in: .whitespaces).isEmpty else {
+    /// 加载所有领地
+    private func loadTerritories() async {
+        do {
+            territories = try await territoryManager.loadAllTerritories()
+            territoriesVersion += 1  // ⭐ 触发地图更新
+            TerritoryLogger.shared.log("加载了 \(territories.count) 个领地", type: .info)
+            print("🗺️ Day18: 加载了 \(territories.count) 个领地, version: \(territoriesVersion)")
+        } catch {
+            TerritoryLogger.shared.log("加载领地失败: \(error.localizedDescription)", type: .error)
+            print("❌ Day18: 加载领地失败: \(error.localizedDescription)")
+        }
+    }
+
+    /// 上传当前领地到服务器
+    private func uploadCurrentTerritory() {
+        // ⭐ 再次检查验证状态
+        guard locationManager.territoryValidationPassed else {
+            print("❌ 领地验证未通过，无法上传")
             return
         }
+
+        // 保存当前路径数据（因为 stopPathTracking 会清空）
+        let coordinates = locationManager.pathCoordinates
+        let area = locationManager.calculatedArea
+        let name = territoryName.trimmingCharacters(in: .whitespaces)
 
         isSaving = true
 
         Task {
-            let result = await territoryManager.saveTerritory(
-                name: territoryName.trimmingCharacters(in: .whitespaces),
-                path: locationManager.pathCoordinates,
-                area: locationManager.calculatedArea
-            )
+            do {
+                // 先上传领地
+                try await territoryManager.uploadTerritory(
+                    coordinates: coordinates,
+                    area: area,
+                    startTime: Date()
+                )
 
-            await MainActor.run {
-                isSaving = false
+                // 如果用户输入了名称，更新名称
+                if !name.isEmpty, let savedTerritory = territoryManager.lastSavedTerritory {
+                    _ = await territoryManager.updateTerritoryName(savedTerritory, newName: name)
+                }
 
-                if result != nil {
-                    // 保存成功
+                await MainActor.run {
+                    isSaving = false
+
+                    // 上传成功提示
                     withAnimation {
                         showSaveSuccess = true
                     }
@@ -233,8 +322,30 @@ struct MapTabView: View {
                         }
                     }
 
-                    // 清除路径
-                    locationManager.clearPath()
+                    // ⭐ Day18 关键：上传成功后停止追踪并重置所有状态
+                    locationManager.stopPathTracking()
+                }
+
+                // ⭐ Day18: 上传成功后刷新领地列表
+                await loadTerritories()
+
+            } catch {
+                await MainActor.run {
+                    isSaving = false
+                    saveErrorMessage = error.localizedDescription
+                    print("❌ 上传失败: \(error.localizedDescription)")
+
+                    // 显示错误提示
+                    withAnimation {
+                        showSaveError = true
+                    }
+
+                    // 5秒后自动隐藏错误提示
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+                        withAnimation {
+                            showSaveError = false
+                        }
+                    }
                 }
             }
         }
@@ -420,6 +531,77 @@ struct MapTabView: View {
         .cornerRadius(16)
         .shadow(color: .black.opacity(0.3), radius: 10, x: 0, y: 5)
         .padding(.horizontal)
+    }
+
+    /// Day19: 碰撞警告横幅
+    private var collisionWarningBanner: some View {
+        let result = locationManager.collisionResult
+
+        return HStack(spacing: 12) {
+            // 图标
+            Image(systemName: result.warningLevel == .violation ? "xmark.octagon.fill" : "exclamationmark.triangle.fill")
+                .foregroundColor(.white)
+                .font(.title2)
+
+            VStack(alignment: .leading, spacing: 4) {
+                // 标题
+                Text(collisionWarningTitle)
+                    .font(.headline)
+                    .foregroundColor(.white)
+
+                // 消息
+                if let message = result.message {
+                    Text(message)
+                        .font(.caption)
+                        .foregroundColor(.white.opacity(0.9))
+                }
+            }
+
+            Spacer()
+
+            // 距离显示（如果有）
+            if let distance = result.closestDistance, distance < Double.infinity {
+                Text("\(Int(distance))m")
+                    .font(.title2)
+                    .fontWeight(.bold)
+                    .foregroundColor(.white)
+            }
+        }
+        .padding()
+        .background(collisionWarningColor.opacity(0.95))
+        .cornerRadius(16)
+        .shadow(color: .black.opacity(0.3), radius: 10, x: 0, y: 5)
+        .padding(.horizontal)
+    }
+
+    /// 碰撞警告标题
+    private var collisionWarningTitle: String {
+        switch locationManager.collisionResult.warningLevel {
+        case .caution:
+            return "注意"
+        case .warning:
+            return "警告"
+        case .danger:
+            return "危险"
+        case .violation:
+            return "违规碰撞！"
+        default:
+            return ""
+        }
+    }
+
+    /// 碰撞警告颜色
+    private var collisionWarningColor: Color {
+        switch locationManager.collisionResult.warningLevel {
+        case .caution:
+            return Color.yellow
+        case .warning:
+            return Color.orange
+        case .danger, .violation:
+            return Color.red
+        default:
+            return Color.clear
+        }
     }
 
     /// 位置信息面板（显示坐标）

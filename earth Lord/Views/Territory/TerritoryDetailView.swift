@@ -2,7 +2,7 @@
 //  TerritoryDetailView.swift
 //  earth Lord
 //
-//  领地详情页面 - Day17
+//  领地详情页面 - Day18
 //
 
 import SwiftUI
@@ -30,6 +30,12 @@ struct TerritoryDetailView: View {
     /// 地图区域
     @State private var mapRegion: MKCoordinateRegion = MKCoordinateRegion()
 
+    /// 是否显示删除确认
+    @State private var showDeleteAlert = false
+
+    /// 删除后的回调
+    var onDelete: (() -> Void)?
+
     // MARK: - Body
 
     var body: some View {
@@ -51,14 +57,23 @@ struct TerritoryDetailView: View {
                         infoCard
                             .padding(.horizontal)
 
+                        // 占位功能区
+                        futureFeatureCard
+                            .padding(.horizontal)
+
                         // 路径点列表
                         pathPointsCard
                             .padding(.horizontal)
+
+                        // 删除按钮
+                        deleteButton
+                            .padding(.horizontal)
+                            .padding(.bottom, 20)
                     }
                     .padding(.vertical)
                 }
             }
-            .navigationTitle(territory.name)
+            .navigationTitle(territory.displayName)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 // 关闭按钮
@@ -72,7 +87,7 @@ struct TerritoryDetailView: View {
                 // 编辑按钮
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(action: {
-                        newName = territory.name
+                        newName = territory.name ?? ""
                         showEditNameDialog = true
                     }) {
                         Image(systemName: "pencil")
@@ -89,6 +104,20 @@ struct TerritoryDetailView: View {
                         dismiss()
                     }
                 }
+            }
+            .alert("确认删除", isPresented: $showDeleteAlert) {
+                Button("取消", role: .cancel) {}
+                Button("删除", role: .destructive) {
+                    Task {
+                        let success = await territoryManager.deleteTerritory(territory)
+                        if success {
+                            onDelete?()
+                            dismiss()
+                        }
+                    }
+                }
+            } message: {
+                Text("确定要删除「\(territory.displayName)」吗？\n此操作无法撤销。")
             }
             .onAppear {
                 setupMapRegion()
@@ -110,7 +139,7 @@ struct TerritoryDetailView: View {
         }
         .overlay {
             // 绘制领地边界
-            TerritoryPolygonView(coordinates: territory.path.asCoordinates)
+            TerritoryPolygonView(coordinates: territory.toCoordinates())
         }
         .disabled(true) // 禁止地图交互
     }
@@ -135,9 +164,7 @@ struct TerritoryDetailView: View {
             infoRow(icon: "square.dashed", title: "面积", value: TerritoryManager.formatArea(territory.area))
             infoRow(icon: "point.topleft.down.to.point.bottomright.curvepath", title: "路径点数", value: "\(territory.path.count) 个")
 
-            if let createdAt = territory.createdAt {
-                infoRow(icon: "calendar", title: "创建时间", value: formatFullDate(createdAt))
-            }
+            infoRow(icon: "calendar", title: "创建时间", value: territory.formattedCreatedAt)
 
             // 中心坐标
             infoRow(icon: "location", title: "中心坐标", value: formatCoordinate(centerCoordinate))
@@ -176,9 +203,11 @@ struct TerritoryDetailView: View {
                         .foregroundColor(ApocalypseTheme.primary)
                         .frame(width: 30)
 
-                    Text(formatCoordinate(point.coordinate))
-                        .font(.system(.caption, design: .monospaced))
-                        .foregroundColor(ApocalypseTheme.textSecondary)
+                    if let lat = point["lat"], let lon = point["lon"] {
+                        Text(formatCoordinate(CLLocationCoordinate2D(latitude: lat, longitude: lon)))
+                            .font(.system(.caption, design: .monospaced))
+                            .foregroundColor(ApocalypseTheme.textSecondary)
+                    }
 
                     Spacer()
                 }
@@ -214,12 +243,89 @@ struct TerritoryDetailView: View {
         }
     }
 
+    /// 占位功能区
+    private var futureFeatureCard: some View {
+        VStack(spacing: 16) {
+            // 标题
+            HStack {
+                Image(systemName: "sparkles")
+                    .foregroundColor(ApocalypseTheme.primary)
+                Text("更多功能")
+                    .font(.headline)
+                    .foregroundColor(ApocalypseTheme.textPrimary)
+                Spacer()
+            }
+
+            Divider()
+                .background(ApocalypseTheme.textSecondary.opacity(0.3))
+
+            // 占位功能
+            futureFeatureRow(icon: "building.2", title: "建筑系统", description: "在领地上建造建筑")
+            futureFeatureRow(icon: "arrow.triangle.swap", title: "领地交易", description: "与其他玩家交易领地")
+            futureFeatureRow(icon: "shield.lefthalf.filled", title: "领地防御", description: "设置领地防御系统")
+        }
+        .padding()
+        .background(ApocalypseTheme.cardBackground)
+        .cornerRadius(12)
+    }
+
+    /// 占位功能行
+    private func futureFeatureRow(icon: String, title: String, description: String) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .foregroundColor(ApocalypseTheme.textSecondary)
+                .frame(width: 24)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.subheadline)
+                    .foregroundColor(ApocalypseTheme.textPrimary)
+
+                Text(description)
+                    .font(.caption)
+                    .foregroundColor(ApocalypseTheme.textSecondary)
+            }
+
+            Spacer()
+
+            Text("敬请期待")
+                .font(.caption)
+                .foregroundColor(ApocalypseTheme.warning)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(ApocalypseTheme.warning.opacity(0.2))
+                .cornerRadius(8)
+        }
+    }
+
+    /// 删除按钮
+    private var deleteButton: some View {
+        Button(action: {
+            showDeleteAlert = true
+        }) {
+            HStack {
+                Image(systemName: "trash")
+                Text("删除领地")
+            }
+            .foregroundColor(.white)
+            .frame(maxWidth: .infinity)
+            .padding()
+            .background(ApocalypseTheme.danger)
+            .cornerRadius(12)
+        }
+    }
+
     // MARK: - Helpers
 
     /// 中心坐标
     private var centerCoordinate: CLLocationCoordinate2D {
-        let latitudes = territory.path.map { $0.latitude }
-        let longitudes = territory.path.map { $0.longitude }
+        let coordinates = territory.toCoordinates()
+        guard !coordinates.isEmpty else {
+            return CLLocationCoordinate2D(latitude: 0, longitude: 0)
+        }
+
+        let latitudes = coordinates.map { $0.latitude }
+        let longitudes = coordinates.map { $0.longitude }
 
         let avgLat = latitudes.reduce(0, +) / Double(latitudes.count)
         let avgLon = longitudes.reduce(0, +) / Double(longitudes.count)
@@ -229,7 +335,7 @@ struct TerritoryDetailView: View {
 
     /// 设置地图区域
     private func setupMapRegion() {
-        let coordinates = territory.path.map { $0.coordinate }
+        let coordinates = territory.toCoordinates()
 
         guard !coordinates.isEmpty else { return }
 
@@ -254,14 +360,6 @@ struct TerritoryDetailView: View {
         mapRegion = MKCoordinateRegion(center: center, span: span)
     }
 
-    /// 格式化完整日期
-    private func formatFullDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .short
-        return formatter.string(from: date)
-    }
-
     /// 格式化坐标
     private func formatCoordinate(_ coordinate: CLLocationCoordinate2D) -> String {
         String(format: "%.6f, %.6f", coordinate.latitude, coordinate.longitude)
@@ -282,17 +380,21 @@ struct TerritoryPolygonView: View {
 
 #Preview {
     let sampleTerritory = Territory(
-        id: UUID(),
-        userId: UUID(),
+        id: "preview-id",
+        userId: "preview-user",
         name: "测试领地",
         path: [
-            PathPoint(coordinate: CLLocationCoordinate2D(latitude: 31.23, longitude: 121.47)),
-            PathPoint(coordinate: CLLocationCoordinate2D(latitude: 31.24, longitude: 121.47)),
-            PathPoint(coordinate: CLLocationCoordinate2D(latitude: 31.24, longitude: 121.48)),
-            PathPoint(coordinate: CLLocationCoordinate2D(latitude: 31.23, longitude: 121.48))
+            ["lat": 31.23, "lon": 121.47],
+            ["lat": 31.24, "lon": 121.47],
+            ["lat": 31.24, "lon": 121.48],
+            ["lat": 31.23, "lon": 121.48]
         ],
         area: 12500,
-        createdAt: Date()
+        pointCount: 4,
+        isActive: true,
+        completedAt: nil,
+        startedAt: nil,
+        createdAt: "2026-01-12T08:00:00.000Z"
     )
 
     TerritoryDetailView(territory: sampleTerritory)

@@ -85,11 +85,16 @@ struct TerritoryTabView: View {
                 }
             } message: {
                 if let territory = territoryToDelete {
-                    Text("确定要删除「\(territory.name)」吗？此操作无法撤销。")
+                    Text("确定要删除「\(territory.displayName)」吗？此操作无法撤销。")
                 }
             }
             .sheet(item: $selectedTerritory) { territory in
-                TerritoryDetailView(territory: territory)
+                TerritoryDetailView(territory: territory, onDelete: {
+                    // 删除后刷新列表
+                    Task {
+                        await territoryManager.fetchMyTerritories()
+                    }
+                })
             }
         }
     }
@@ -263,7 +268,7 @@ struct TerritoryRowView: View {
 
             // 信息
             VStack(alignment: .leading, spacing: 4) {
-                Text(territory.name)
+                Text(territory.displayName)
                     .font(.headline)
                     .foregroundColor(ApocalypseTheme.textPrimary)
 
@@ -283,11 +288,9 @@ struct TerritoryRowView: View {
             Spacer()
 
             // 时间
-            if let createdAt = territory.createdAt {
-                Text(formatDate(createdAt))
-                    .font(.caption2)
-                    .foregroundColor(ApocalypseTheme.textSecondary)
-            }
+            Text(territory.formattedCreatedAt)
+                .font(.caption2)
+                .foregroundColor(ApocalypseTheme.textSecondary)
 
             // 箭头
             Image(systemName: "chevron.right")
@@ -295,13 +298,6 @@ struct TerritoryRowView: View {
                 .font(.caption)
         }
         .padding(.vertical, 8)
-    }
-
-    /// 格式化日期
-    private func formatDate(_ date: Date) -> String {
-        let formatter = RelativeDateTimeFormatter()
-        formatter.unitsStyle = .abbreviated
-        return formatter.localizedString(for: date, relativeTo: Date())
     }
 }
 

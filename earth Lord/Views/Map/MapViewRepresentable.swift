@@ -31,6 +31,15 @@ struct MapViewRepresentable: UIViewRepresentable {
     /// 路径是否已闭合（Day16）
     var isPathClosed: Bool
 
+    /// Day18: 已加载的领地列表
+    var territories: [Territory]
+
+    /// Day18: 当前用户 ID（用于区分自己和他人的领地）
+    var currentUserId: String?
+
+    /// Day18: 领地版本号（用于触发更新）
+    var territoriesVersion: Int
+
     // MARK: - UIViewRepresentable Methods
 
     /// 创建 MKMapView
@@ -98,6 +107,10 @@ struct MapViewRepresentable: UIViewRepresentable {
 
         // ⭐ 更新追踪路径（当 pathUpdateVersion 变化时）
         updateTrackingPath(uiView)
+
+        // ⭐ Day18: 绘制所有领地
+        print("🗺️ updateUIView: territories.count = \(territories.count), version = \(territoriesVersion)")
+        drawTerritories(on: uiView)
     }
 
     /// 创建 Coordinator（处理 MKMapViewDelegate 回调）
@@ -109,34 +122,89 @@ struct MapViewRepresentable: UIViewRepresentable {
 
     /// 更新追踪路径显示
     private func updateTrackingPath(_ mapView: MKMapView) {
-        // 移除旧的轨迹线和多边形
-        mapView.removeOverlays(mapView.overlays)
+        // ⭐ Day18: 只移除轨迹线和当前圈地多边形，保留领地多边形
+        let trackingOverlays = mapView.overlays.filter { overlay in
+            // 移除 MKPolyline（轨迹线）
+            if overlay is MKPolyline {
+                return true
+            }
+            // 移除没有 title 或 title 为 "tracking" 的多边形（当前圈地）
+            if let polygon = overlay as? MKPolygon {
+                return polygon.title == nil || polygon.title == "tracking"
+            }
+            return false
+        }
+        mapView.removeOverlays(trackingOverlays)
 
         // 如果路径点少于 2 个，不绘制
         guard trackingPath.count >= 2 else {
-            print("🗺️ 路径点数不足，跳过绘制")
             return
         }
 
         // ⭐ 关键：坐标转换 WGS-84 → GCJ-02
-        let convertedCoordinates = CoordinateConverter.wgs84ToGcj02(trackingPath)
+        var convertedCoordinates = CoordinateConverter.wgs84ToGcj02(trackingPath)
 
         print("🗺️ 更新轨迹路径: \(convertedCoordinates.count) 个点, 闭环状态: \(isPathClosed)")
 
-        // 创建 MKPolyline（轨迹线）
-        let polyline = MKPolyline(coordinates: convertedCoordinates, count: convertedCoordinates.count)
+        // 创建 MKPolyline（轨迹线）- 使用 & 传入指针
+        let polyline = MKPolyline(coordinates: &convertedCoordinates, count: convertedCoordinates.count)
 
         // 添加轨迹线到地图
         mapView.addOverlay(polyline)
 
         // ⭐ Day16: 如果闭环且点数 ≥ 3，添加多边形填充
         if isPathClosed && convertedCoordinates.count >= 3 {
-            let polygon = MKPolygon(coordinates: convertedCoordinates, count: convertedCoordinates.count)
+            let polygon = MKPolygon(coordinates: &convertedCoordinates, count: convertedCoordinates.count)
+            polygon.title = "tracking" // Day18: 标记为当前圈地，区别于已保存的领地
             mapView.addOverlay(polygon)
             print("✅ 已添加多边形填充（闭环）")
         }
 
         print("✅ 轨迹已添加到地图")
+    }
+
+    /// Day18: 绘制所有领地
+    private func drawTerritories(on mapView: MKMapView) {
+        // 没有领地时直接返回
+        guard !territories.isEmpty else { return }
+
+        // 移除旧的领地多边形（保留轨迹线和当前圈地多边形）
+        let territoryOverlays = mapView.overlays.filter { overlay in
+            if let polygon = overlay as? MKPolygon {
+                return polygon.title == "mine" || polygon.title == "others"
+            }
+            return false
+        }
+        mapView.removeOverlays(territoryOverlays)
+
+        // 绘制每个领地
+        for territory in territories {
+            var coords = territory.toCoordinates()
+
+            print("🗺️ Day18: 领地 \(territory.displayName) 有 \(coords.count) 个坐标点")
+
+            // 坐标点数不足，跳过
+            guard coords.count >= 3 else {
+                print("⚠️ Day18: 领地 \(territory.displayName) 坐标点不足，跳过")
+                continue
+            }
+
+            // ⚠️ 中国大陆需要坐标转换 WGS-84 → GCJ-02
+            coords = CoordinateConverter.wgs84ToGcj02(coords)
+
+            // ⭐ 关键：使用 & 传入坐标数组指针
+            let polygon = MKPolygon(coordinates: &coords, count: coords.count)
+
+            // ⚠️ 关键：比较 userId 时必须统一大小写！
+            // 数据库存的是小写 UUID，但 iOS 的 uuidString 返回大写
+            let isMine = territory.userId.lowercased() == currentUserId?.lowercased()
+            polygon.title = isMine ? "mine" : "others"
+
+            mapView.addOverlay(polygon, level: .aboveRoads)
+            print("✅ Day18: 已添加领地多边形 \(territory.displayName), isMine: \(isMine)")
+        }
+
+        print("🗺️ Day18: 已绘制 \(territories.count) 个领地")
     }
 
     /// 应用末世滤镜效果（泛黄、降低饱和度）
@@ -260,18 +328,26 @@ struct MapViewRepresentable: UIViewRepresentable {
                 return renderer
             }
 
-            // Day16: 渲染多边形填充
+            // Day16 & Day18: 渲染多边形填充
             if let polygon = overlay as? MKPolygon {
                 let renderer = MKPolygonRenderer(polygon: polygon)
 
-                // 填充色：半透明绿色
-                renderer.fillColor = UIColor.systemGreen.withAlphaComponent(0.25)
+                // Day18: 根据 title 区分颜色
+                if polygon.title == "mine" {
+                    // 自己的领地：绿色
+                    renderer.fillColor = UIColor.systemGreen.withAlphaComponent(0.25)
+                    renderer.strokeColor = UIColor.systemGreen
+                } else if polygon.title == "others" {
+                    // 他人的领地：橙色
+                    renderer.fillColor = UIColor.systemOrange.withAlphaComponent(0.25)
+                    renderer.strokeColor = UIColor.systemOrange
+                } else {
+                    // 当前圈地（tracking）或未标记：绿色
+                    renderer.fillColor = UIColor.systemGreen.withAlphaComponent(0.25)
+                    renderer.strokeColor = UIColor.systemGreen
+                }
 
-                // 边框色：绿色
-                renderer.strokeColor = UIColor.systemGreen
-                renderer.lineWidth = 2
-
-                print("🎨 渲染多边形: 半透明绿色填充")
+                renderer.lineWidth = 2.0
 
                 return renderer
             }
