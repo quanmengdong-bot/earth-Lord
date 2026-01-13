@@ -61,13 +61,13 @@ class LocationManager: NSObject, ObservableObject {
     /// Day19: 是否有碰撞警告需要显示
     @Published var hasCollisionWarning: Bool = false
 
+    /// 当前完整位置信息（包含速度、精度等）- 供探索功能使用
+    @Published var currentLocation: CLLocation?
+
     // MARK: - Private Properties
 
     /// CoreLocation 管理器
     private let locationManager = CLLocationManager()
-
-    /// 当前位置（用于 Timer 采点）
-    private var currentLocation: CLLocation?
 
     /// 路径更新定时器（每 2 秒检查一次）
     private var pathUpdateTimer: Timer?
@@ -137,6 +137,20 @@ class LocationManager: NSObject, ObservableObject {
 
         print("📍 开始获取用户位置...")
         locationManager.startUpdatingLocation()
+    }
+
+    /// 启用高精度探索模式（更频繁的位置更新）
+    func enableExplorationMode() {
+        print("📍 启用探索模式：高精度位置更新")
+        locationManager.distanceFilter = 2  // 移动2米就更新
+        locationManager.desiredAccuracy = kCLLocationAccuracyBest
+        startUpdatingLocation()
+    }
+
+    /// 禁用探索模式，恢复正常更新频率
+    func disableExplorationMode() {
+        print("📍 禁用探索模式：恢复正常位置更新")
+        locationManager.distanceFilter = 10  // 恢复到10米
     }
 
     /// 停止定位

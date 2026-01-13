@@ -30,17 +30,23 @@ struct MainTabView: View {
                 }
                 .tag(1)
 
+            ResourcesTabView()
+                .tabItem {
+                    Label(resourcesTitle, systemImage: "cube.box.fill")
+                }
+                .tag(2)
+
             ProfileTabView()
                 .tabItem {
                     Label(profileTitle, systemImage: "person.fill")
                 }
-                .tag(2)
+                .tag(3)
 
             MoreTabView()
                 .tabItem {
                     Label(moreTitle, systemImage: "ellipsis")
                 }
-                .tag(3)
+                .tag(4)
         }
         .tint(ApocalypseTheme.primary)
         .id(languageManager.currentLanguage) // 强制刷新 TabView
@@ -88,6 +94,10 @@ struct MainTabView: View {
 
     private var territoryTitle: String {
         return "领地".localized
+    }
+
+    private var resourcesTitle: String {
+        return "资源".localized
     }
 
     private var profileTitle: String {

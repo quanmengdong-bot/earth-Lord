@@ -24,6 +24,9 @@ struct MapTabView: View {
     /// 认证管理器（Day18: 获取当前用户 ID）
     @ObservedObject private var authManager = AuthManager.shared
 
+    /// 探索管理器
+    @ObservedObject private var explorationManager = ExplorationManager.shared
+
     /// Day18: 已加载的领地列表
     @State private var territories: [Territory] = []
 
@@ -57,6 +60,12 @@ struct MapTabView: View {
     /// 错误信息（Day18）
     @State private var saveErrorMessage = ""
 
+    /// 是否显示探索结果
+    @State private var showExplorationResult = false
+
+    /// 是否显示探索失败提示
+    @State private var showExplorationFailedAlert = false
+
     // MARK: - Body
 
     var body: some View {
@@ -75,63 +84,95 @@ struct MapTabView: View {
             )
             .ignoresSafeArea()
 
-            // MARK: 顶部状态栏（定位权限提示 + 速度警告 + 验证结果 + 碰撞警告）
+            // MARK: 顶部区域
             VStack {
+                HStack {
+                    // 左上角：经纬度显示
+                    if let location = locationManager.userLocation {
+                        compactLocationInfo(location: location)
+                    }
+
+                    Spacer()
+                }
+                .padding(.top, 60)
+                .padding(.horizontal, 16)
+
                 // Day17: 验证结果横幅（最高优先级）
                 if showValidationBanner {
                     validationResultBanner
-                        .padding(.top, 60)
+                        .padding(.top, 8)
                         .transition(.move(edge: .top).combined(with: .opacity))
                 }
                 // Day19: 碰撞警告横幅（第二优先级）
                 else if locationManager.hasCollisionWarning {
                     collisionWarningBanner
-                        .padding(.top, 60)
+                        .padding(.top, 8)
                         .transition(.move(edge: .top).combined(with: .opacity))
                 }
                 // Day16: 速度警告横幅
                 else if showSpeedWarning, let warning = locationManager.speedWarning {
                     speedWarningBanner(message: warning)
-                        .padding(.top, 60)
+                        .padding(.top, 8)
                         .transition(.move(edge: .top).combined(with: .opacity))
                 } else if locationManager.authorizationStatus == .notDetermined {
                     // 未请求权限时的提示
                     requestPermissionBanner
-                        .padding(.top, 60)
+                        .padding(.top, 8)
                 } else if locationManager.isDenied {
                     // 权限被拒绝时的提示
                     permissionDeniedBanner
-                        .padding(.top, 60)
+                        .padding(.top, 8)
                 } else if let error = locationManager.locationError {
                     // 定位错误提示
                     errorBanner(message: error)
-                        .padding(.top, 60)
+                        .padding(.top, 8)
                 }
 
                 Spacer()
-
-                // MARK: 底部信息栏（坐标显示）
-                if let location = locationManager.userLocation {
-                    locationInfoPanel(location: location)
-                        .padding(.bottom, 100) // 留出 Tab Bar 空间
-                }
             }
 
-            // MARK: 右下角按钮组
-            VStack {
+            // MARK: 底部控制区域（按钮组）
+            VStack(spacing: 12) {
                 Spacer()
-                HStack {
-                    Spacer()
-                    VStack(spacing: 12) {
-                        // 圈地按钮
-                        trackingButton
 
-                        // 定位按钮
-                        locateButton
-                    }
-                    .padding(.trailing, 20)
-                    .padding(.bottom, 120) // 留出 Tab Bar 空间
+                // 探索实时数据（探索中显示）
+                if explorationManager.isExploring {
+                    explorationDataPanel
                 }
+
+                // 按钮组（三个按钮水平分布）
+                HStack(spacing: 16) {
+                    // 左侧：圈地按钮
+                    trackingButton
+
+                    // 中间：定位按钮
+                    locateButton
+
+                    // 右侧：探索按钮
+                    exploreButton
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.bottom, 100) // 留出 Tab Bar 空间
+        }
+        .sheet(isPresented: $showExplorationResult) {
+            if let result = explorationManager.explorationResult,
+               let stats = explorationManager.explorationStats {
+                ExplorationResultView(result: result, stats: stats)
+            }
+        }
+        .alert("探索失败", isPresented: $showExplorationFailedAlert) {
+            Button("确定", role: .cancel) {
+                explorationManager.state = .idle
+            }
+        } message: {
+            Text(explorationManager.failReason?.message ?? "探索因异常终止")
+        }
+        .onChange(of: explorationManager.state) { newState in
+            if newState == .completed {
+                showExplorationResult = true
+            } else if newState == .failed {
+                showExplorationFailedAlert = true
             }
         }
         .onAppear {
@@ -604,51 +645,80 @@ struct MapTabView: View {
         }
     }
 
-    /// 位置信息面板（显示坐标）
-    private func locationInfoPanel(location: CLLocationCoordinate2D) -> some View {
-        VStack(spacing: 8) {
-            HStack {
-                Image(systemName: "location.fill")
-                    .foregroundColor(ApocalypseTheme.primary)
-                Text("当前位置".localized)
-                    .font(.caption)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.white)
-            }
+    /// 左上角紧凑坐标显示
+    private func compactLocationInfo(location: CLLocationCoordinate2D) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: "location.fill")
+                .font(.caption2)
+                .foregroundColor(ApocalypseTheme.primary)
 
-            HStack(spacing: 20) {
-                // 纬度
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("纬度".localized)
-                        .font(.caption2)
-                        .foregroundColor(ApocalypseTheme.textSecondary)
-                    Text(String(format: "%.6f", location.latitude))
-                        .font(.system(.caption, design: .monospaced))
-                        .foregroundColor(.white)
-                }
-
-                Divider()
-                    .frame(height: 30)
-                    .background(ApocalypseTheme.textSecondary)
-
-                // 经度
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("经度".localized)
-                        .font(.caption2)
-                        .foregroundColor(ApocalypseTheme.textSecondary)
-                    Text(String(format: "%.6f", location.longitude))
-                        .font(.system(.caption, design: .monospaced))
-                        .foregroundColor(.white)
-                }
-            }
+            Text(String(format: "%.4f, %.4f", location.latitude, location.longitude))
+                .font(.system(size: 11, design: .monospaced))
+                .foregroundColor(.white)
         }
-        .padding()
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
         .background(
             ApocalypseTheme.cardBackground.opacity(0.9)
         )
+        .cornerRadius(8)
+        .shadow(color: .black.opacity(0.3), radius: 5, x: 0, y: 2)
+    }
+
+    /// 探索实时数据面板（地图页面探索中显示）
+    private var explorationDataPanel: some View {
+        HStack(spacing: 20) {
+            // 行走距离
+            VStack(spacing: 2) {
+                Text(explorationManager.formatDistance(explorationManager.currentDistance))
+                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .foregroundColor(.white)
+                    .contentTransition(.numericText())
+
+                Text("距离")
+                    .font(.caption2)
+                    .foregroundColor(ApocalypseTheme.textSecondary)
+            }
+
+            Divider()
+                .frame(height: 30)
+                .background(ApocalypseTheme.textMuted)
+
+            // 当前速度
+            VStack(spacing: 2) {
+                Text(explorationManager.formatSpeed(explorationManager.currentSpeed))
+                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .foregroundColor(explorationManager.isOverSpeed ? ApocalypseTheme.danger : .white)
+                    .contentTransition(.numericText())
+
+                Text("速度")
+                    .font(.caption2)
+                    .foregroundColor(ApocalypseTheme.textSecondary)
+            }
+
+            Divider()
+                .frame(height: 30)
+                .background(ApocalypseTheme.textMuted)
+
+            // 探索时长
+            VStack(spacing: 2) {
+                Text(explorationManager.formatDuration(explorationManager.currentDuration))
+                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .foregroundColor(.white)
+                    .contentTransition(.numericText())
+
+                Text("时长")
+                    .font(.caption2)
+                    .foregroundColor(ApocalypseTheme.textSecondary)
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 12)
+        .background(
+            ApocalypseTheme.cardBackground.opacity(0.95)
+        )
         .cornerRadius(16)
         .shadow(color: .black.opacity(0.3), radius: 10, x: 0, y: 5)
-        .padding(.horizontal)
     }
 
     /// 圈地按钮（右下角）
@@ -697,7 +767,7 @@ struct MapTabView: View {
         }
     }
 
-    /// 定位按钮（右下角）
+    /// 定位按钮
     private var locateButton: some View {
         Button(action: {
             // 如果已授权，重新开始定位
@@ -726,6 +796,55 @@ struct MapTabView: View {
                     .font(.title3)
             }
         }
+    }
+
+    /// 探索按钮
+    private var exploreButton: some View {
+        Button(action: {
+            Task {
+                if explorationManager.isExploring {
+                    await explorationManager.stopExploration()
+                } else {
+                    await explorationManager.startExploration()
+                }
+            }
+        }) {
+            HStack(spacing: 8) {
+                if explorationManager.isExploring {
+                    // 探索中状态
+                    Image(systemName: "stop.fill")
+                        .font(.system(size: 16))
+                        .foregroundColor(.white)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("结束探索")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.white)
+
+                        Text("\(explorationManager.formatDistance(explorationManager.currentDistance))")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(.white.opacity(0.9))
+                    }
+                } else {
+                    // 正常状态
+                    Image(systemName: "figure.walk")
+                        .font(.system(size: 16))
+                        .foregroundColor(.white)
+
+                    Text("开始探索")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.white)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(
+                Capsule()
+                    .fill(explorationManager.isExploring ? ApocalypseTheme.danger : ApocalypseTheme.success)
+            )
+            .shadow(color: .black.opacity(0.3), radius: 5, x: 0, y: 2)
+        }
+        .disabled(explorationManager.state == .calculating)
     }
 }
 
