@@ -204,6 +204,32 @@ class ExplorationManager: ObservableObject {
     /// 探索失败原因
     @Published var failReason: ExplorationFailReason?
 
+    // MARK: - POI 相关属性
+
+    /// 附近的 POI 列表
+    @Published var nearbyPOIs: [GamePOI] = []
+
+    /// 是否正在搜索 POI
+    @Published var isSearchingPOIs: Bool = false
+
+    /// 是否显示 POI 接近弹窗
+    @Published var showPOIPopup: Bool = false
+
+    /// 当前接近的 POI
+    @Published var currentApproachedPOI: GamePOI?
+
+    /// 是否显示搜刮结果
+    @Published var showScavengeResult: Bool = false
+
+    /// 搜刮获得的物品
+    @Published var scavengedItems: [FoundItem] = []
+
+    /// 最近搜刮的 POI 名称（用于显示结果）
+    @Published var lastScavengedPOIName: String = ""
+
+    /// 本次探索搜刮的 POI 数量
+    @Published var scavengedPOICount: Int = 0
+
     // MARK: - Private Properties
 
     /// 当前探索会话ID
@@ -253,9 +279,26 @@ class ExplorationManager: ObservableObject {
 
     // MARK: - 日志方法
 
-    private func log(_ message: String) {
+    private func log(_ message: String, type: LogType? = nil) {
         let timestamp = DateFormatter.localizedString(from: Date(), dateStyle: .none, timeStyle: .medium)
         print("[\(timestamp)] [Exploration] \(message)")
+
+        // 根据消息内容自动判断日志类型
+        let logType: LogType
+        if let explicitType = type {
+            logType = explicitType
+        } else if message.contains("❌") {
+            logType = .error
+        } else if message.contains("⚠️") {
+            logType = .warning
+        } else if message.contains("✅") || message.contains("🎯") {
+            logType = .success
+        } else {
+            logType = .info
+        }
+
+        // 同时记录到 TerritoryLogger（用于 UI 显示）
+        TerritoryLogger.shared.log("[探索] \(message)", type: logType)
     }
 
     // MARK: - 设置位置监听
@@ -346,7 +389,156 @@ class ExplorationManager: ObservableObject {
         startDurationTimer()
         log("⏱️ 计时器已启动")
 
+        // 搜索附近 POI
+        await searchNearbyPOIs()
+
         log("✅ 探索开始成功")
+    }
+
+    // MARK: - POI 搜索
+
+    /// 搜索附近的 POI 并设置地理围栏
+    private func searchNearbyPOIs() async {
+        guard let center = LocationManager.shared.userLocation else {
+            log("⚠️ 无法获取位置，跳过 POI 搜索")
+            return
+        }
+
+        isSearchingPOIs = true
+        log("🔍 开始搜索附近 POI...")
+
+        // 调用 POISearchManager 搜索
+        let pois = await POISearchManager.shared.searchNearbyPOIs(center: center)
+
+        // 更新 POI 列表
+        nearbyPOIs = pois
+        isSearchingPOIs = false
+
+        log("📍 找到 \(pois.count) 个 POI")
+
+        // 为每个 POI 设置地理围栏
+        for poi in pois {
+            LocationManager.shared.startMonitoringPOI(poi)
+        }
+
+        log("🔔 已为 \(pois.count) 个 POI 设置地理围栏")
+    }
+
+    // MARK: - POI 接近处理
+
+    /// 处理进入 POI 范围事件
+    func handlePOIEntered(poiId: String) {
+        guard isExploring else { return }
+
+        // 查找对应的 POI
+        guard let poi = nearbyPOIs.first(where: { $0.id == poiId }) else {
+            log("⚠️ 未找到 POI: \(poiId)")
+            return
+        }
+
+        // 如果已经搜刮过，不再提示
+        if poi.isScavenged {
+            log("ℹ️ POI 已搜刮: \(poi.name)")
+            return
+        }
+
+        log("🎯 进入 POI 范围: \(poi.name)")
+
+        // 设置当前接近的 POI 并显示弹窗
+        currentApproachedPOI = poi
+        showPOIPopup = true
+    }
+
+    /// 执行搜刮
+    func scavengePOI() async {
+        guard let poi = currentApproachedPOI else { return }
+
+        log("🔧 开始搜刮: \(poi.name)")
+
+        // 关闭弹窗
+        showPOIPopup = false
+
+        // 生成随机物品（1-3件）
+        let itemCount = Int.random(in: 1...3)
+        var items: [FoundItem] = []
+
+        // 从 InventoryManager 的物品定义中随机抽取
+        let definitions = Array(InventoryManager.shared.itemDefinitions.values)
+        guard !definitions.isEmpty else {
+            log("⚠️ 物品定义为空，无法生成奖励")
+            return
+        }
+
+        for _ in 0..<itemCount {
+            let randomDef = definitions.randomElement()!
+            let quantity = Int.random(in: 1...3)
+            let item = FoundItem(
+                itemId: randomDef.id,
+                quantity: quantity,
+                quality: nil
+            )
+            items.append(item)
+            log("   📦 生成: \(randomDef.name) x\(quantity)")
+        }
+
+        // 存入背包
+        let success = await InventoryManager.shared.addItems(items, source: "scavenge_\(poi.type.rawValue)")
+        if success {
+            log("✅ 物品已存入背包")
+        } else {
+            log("❌ 存入背包失败")
+        }
+
+        // 标记 POI 为已搜刮
+        if let index = nearbyPOIs.firstIndex(where: { $0.id == poi.id }) {
+            nearbyPOIs[index].isScavenged = true
+        }
+
+        // 停止监控该 POI 的围栏
+        LocationManager.shared.stopMonitoringPOI(poi)
+
+        // 更新搜刮计数
+        scavengedPOICount += 1
+
+        // 保存搜刮结果并显示
+        scavengedItems = items
+        lastScavengedPOIName = poi.name  // 保存 POI 名称供结果页面使用
+        showScavengeResult = true
+
+        // 清除当前 POI
+        currentApproachedPOI = nil
+    }
+
+    /// 关闭 POI 弹窗（稍后再说）
+    func dismissPOIPopup() {
+        showPOIPopup = false
+        currentApproachedPOI = nil
+    }
+
+    /// 关闭搜刮结果
+    func dismissScavengeResult() {
+        showScavengeResult = false
+        scavengedItems = []
+    }
+
+    /// 清除所有 POI 和围栏
+    private func clearPOIs() {
+        log("🧹 清除 POI 和围栏...")
+
+        // 停止所有围栏监控
+        for poi in nearbyPOIs {
+            LocationManager.shared.stopMonitoringPOI(poi)
+        }
+
+        // 清空列表
+        nearbyPOIs = []
+        scavengedPOICount = 0
+        currentApproachedPOI = nil
+        showPOIPopup = false
+        showScavengeResult = false
+        scavengedItems = []
+
+        log("✅ POI 已清除")
     }
 
     // MARK: - 结束探索
@@ -371,6 +563,9 @@ class ExplorationManager: ObservableObject {
 
         // 禁用高精度探索模式
         LocationManager.shared.disableExplorationMode()
+
+        // 清除 POI 和围栏
+        clearPOIs()
 
         // 获取终点坐标
         let endCoordinate = LocationManager.shared.userLocation
@@ -443,8 +638,9 @@ class ExplorationManager: ObservableObject {
             }
         }
 
-        // 加载累计统计
+        // 加载累计统计和历史记录
         await loadExplorationStats()
+        await loadExplorationHistory()
 
         // 更新状态
         state = .completed
@@ -469,6 +665,9 @@ class ExplorationManager: ObservableObject {
 
         // 禁用高精度探索模式
         LocationManager.shared.disableExplorationMode()
+
+        // 清除 POI 和围栏
+        clearPOIs()
 
         // 更新数据库记录状态为失败
         if let sessionId = currentSessionId {
@@ -509,6 +708,9 @@ class ExplorationManager: ObservableObject {
 
         // 禁用高精度探索模式
         LocationManager.shared.disableExplorationMode()
+
+        // 清除 POI 和围栏
+        clearPOIs()
 
         // 更新数据库记录状态为取消
         if let sessionId = currentSessionId {
@@ -608,6 +810,37 @@ class ExplorationManager: ObservableObject {
         previewTier = RewardGenerator.shared.calculateTier(distance: currentDistance)
 
         log("✅ 距离累加: +\(String(format: "%.1f", distance))m = 总计 \(Int(currentDistance))m [奖励等级: \(previewTier.displayName)]")
+
+        // ⭐ Day22: 主动检测 POI 接近（不依赖地理围栏）
+        checkPOIProximity(userLocation: location)
+    }
+
+    // MARK: - POI 接近检测
+
+    /// 检测是否接近任何 POI
+    private func checkPOIProximity(userLocation: CLLocation) {
+        // 如果已经在显示弹窗，跳过检测
+        guard !showPOIPopup else { return }
+
+        // 检测距离阈值（50米）
+        let proximityThreshold: CLLocationDistance = 50
+
+        for poi in nearbyPOIs {
+            // 跳过已搜刮的 POI
+            if poi.isScavenged { continue }
+
+            // POI 坐标是 GCJ-02，需要转换为 WGS-84 来计算与 GPS 位置的距离
+            let wgs84Coordinate = CoordinateConverter.gcj02ToWgs84(poi.coordinate)
+            let poiLocation = CLLocation(latitude: wgs84Coordinate.latitude, longitude: wgs84Coordinate.longitude)
+            let distance = userLocation.distance(from: poiLocation)
+
+            if distance <= proximityThreshold {
+                log("🎯 检测到接近 POI: \(poi.name)，距离 \(Int(distance))m")
+                currentApproachedPOI = poi
+                showPOIPopup = true
+                return  // 一次只提示一个 POI
+            }
+        }
     }
 
     // MARK: - 速度检测

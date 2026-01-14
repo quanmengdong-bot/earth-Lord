@@ -80,7 +80,8 @@ struct MapTabView: View {
                 isPathClosed: locationManager.isPathClosed,
                 territories: territories,
                 currentUserId: authManager.currentUser?.id,
-                territoriesVersion: territoriesVersion
+                territoriesVersion: territoriesVersion,
+                nearbyPOIs: explorationManager.nearbyPOIs
             )
             .ignoresSafeArea()
 
@@ -154,7 +155,46 @@ struct MapTabView: View {
             }
             .padding(.horizontal, 20)
             .padding(.bottom, 100) // 留出 Tab Bar 空间
+
+            // MARK: Day22 - POI 接近弹窗
+            if explorationManager.showPOIPopup, let poi = explorationManager.currentApproachedPOI {
+                Color.black.opacity(0.4)
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        explorationManager.dismissPOIPopup()
+                    }
+
+                POIProximityPopup(
+                    poi: poi,
+                    onScavenge: {
+                        Task {
+                            await explorationManager.scavengePOI()
+                        }
+                    },
+                    onDismiss: {
+                        explorationManager.dismissPOIPopup()
+                    }
+                )
+                .transition(.scale.combined(with: .opacity))
+            }
+
+            // MARK: Day22 - 搜刮结果弹窗
+            if explorationManager.showScavengeResult {
+                Color.black.opacity(0.4)
+                    .ignoresSafeArea()
+
+                ScavengeResultView(
+                    poiName: explorationManager.lastScavengedPOIName,
+                    items: explorationManager.scavengedItems,
+                    onDismiss: {
+                        explorationManager.dismissScavengeResult()
+                    }
+                )
+                .transition(.scale.combined(with: .opacity))
+            }
         }
+        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: explorationManager.showPOIPopup)
+        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: explorationManager.showScavengeResult)
         .sheet(isPresented: $showExplorationResult) {
             if let result = explorationManager.explorationResult,
                let stats = explorationManager.explorationStats {

@@ -14,6 +14,9 @@ struct TerritoryTestView: View {
     /// 定位管理器（监听追踪状态）
     @ObservedObject private var locationManager = LocationManager.shared
 
+    /// 探索管理器（监听探索状态）
+    @ObservedObject private var explorationManager = ExplorationManager.shared
+
     /// 日志管理器（监听日志更新）
     @ObservedObject private var logger = TerritoryLogger.shared
 
@@ -56,25 +59,57 @@ struct TerritoryTestView: View {
 
     /// 状态指示器
     private var statusIndicator: some View {
-        HStack(spacing: 12) {
-            // 状态圆点
-            Circle()
-                .fill(locationManager.isTracking ? Color.green : Color.gray)
-                .frame(width: 12, height: 12)
-                .shadow(color: locationManager.isTracking ? .green.opacity(0.5) : .clear, radius: 4)
+        VStack(spacing: 12) {
+            // 圈地状态行
+            HStack(spacing: 12) {
+                // 状态圆点
+                Circle()
+                    .fill(locationManager.isTracking ? Color.green : Color.gray)
+                    .frame(width: 12, height: 12)
+                    .shadow(color: locationManager.isTracking ? .green.opacity(0.5) : .clear, radius: 4)
 
-            // 状态文字
-            Text(locationManager.isTracking ? "追踪中" : "未追踪")
-                .font(.headline)
-                .foregroundColor(locationManager.isTracking ? .green : ApocalypseTheme.textSecondary)
-
-            Spacer()
-
-            // 路径点数
-            if locationManager.isTracking {
-                Text("\(locationManager.pathCoordinates.count) 个点")
+                // 状态文字
+                Text(locationManager.isTracking ? "圈地追踪中" : "圈地未追踪")
                     .font(.subheadline)
-                    .foregroundColor(ApocalypseTheme.textSecondary)
+                    .foregroundColor(locationManager.isTracking ? .green : ApocalypseTheme.textSecondary)
+
+                Spacer()
+
+                // 路径点数
+                if locationManager.isTracking {
+                    Text("\(locationManager.pathCoordinates.count) 个点")
+                        .font(.caption)
+                        .foregroundColor(ApocalypseTheme.textSecondary)
+                }
+            }
+
+            // 探索状态行
+            HStack(spacing: 12) {
+                // 状态圆点
+                Circle()
+                    .fill(explorationManager.isExploring ? Color.orange : Color.gray)
+                    .frame(width: 12, height: 12)
+                    .shadow(color: explorationManager.isExploring ? .orange.opacity(0.5) : .clear, radius: 4)
+
+                // 状态文字
+                Text(explorationManager.isExploring ? "探索中" : "未探索")
+                    .font(.subheadline)
+                    .foregroundColor(explorationManager.isExploring ? .orange : ApocalypseTheme.textSecondary)
+
+                Spacer()
+
+                // 探索数据
+                if explorationManager.isExploring {
+                    HStack(spacing: 8) {
+                        Text("\(Int(explorationManager.currentDistance))m")
+                            .font(.caption)
+                            .foregroundColor(ApocalypseTheme.textSecondary)
+
+                        Text("POI: \(explorationManager.nearbyPOIs.count)")
+                            .font(.caption)
+                            .foregroundColor(explorationManager.nearbyPOIs.isEmpty ? .red : ApocalypseTheme.textSecondary)
+                    }
+                }
             }
         }
     }

@@ -153,6 +153,64 @@ class LocationManager: NSObject, ObservableObject {
         locationManager.distanceFilter = 10  // 恢复到10米
     }
 
+    // MARK: - POI 地理围栏
+
+    /// POI 围栏半径（米）
+    private let poiGeofenceRadius: CLLocationDistance = 50
+
+    /// POI 围栏标识前缀
+    private let poiRegionPrefix = "poi_"
+
+    /// 开始监控 POI 地理围栏
+    func startMonitoringPOI(_ poi: GamePOI) {
+        guard CLLocationManager.isMonitoringAvailable(for: CLCircularRegion.self) else {
+            print("⚠️ 设备不支持地理围栏监控")
+            return
+        }
+
+        // ⭐ 关键：POI 坐标来自 MKLocalSearch，是 GCJ-02 格式
+        // CLLocationManager 使用 WGS-84 (GPS原始坐标)，所以需要转换
+        let wgs84Coordinate = CoordinateConverter.gcj02ToWgs84(poi.coordinate)
+
+        let region = CLCircularRegion(
+            center: wgs84Coordinate,
+            radius: poiGeofenceRadius,
+            identifier: "\(poiRegionPrefix)\(poi.id)"
+        )
+        region.notifyOnEntry = true
+        region.notifyOnExit = false  // 只关心进入，不关心离开
+
+        locationManager.startMonitoring(for: region)
+        print("🔔 开始监控 POI 围栏: \(poi.name)")
+        print("   GCJ-02: (\(String(format: "%.4f", poi.coordinate.latitude)), \(String(format: "%.4f", poi.coordinate.longitude)))")
+        print("   WGS-84: (\(String(format: "%.4f", wgs84Coordinate.latitude)), \(String(format: "%.4f", wgs84Coordinate.longitude)))")
+        print("   半径: \(Int(poiGeofenceRadius))m")
+    }
+
+    /// 停止监控 POI 地理围栏
+    func stopMonitoringPOI(_ poi: GamePOI) {
+        let identifier = "\(poiRegionPrefix)\(poi.id)"
+
+        // 查找并停止监控对应的围栏
+        for region in locationManager.monitoredRegions {
+            if region.identifier == identifier {
+                locationManager.stopMonitoring(for: region)
+                print("🔕 停止监控 POI 围栏: \(poi.name)")
+                break
+            }
+        }
+    }
+
+    /// 停止所有 POI 围栏监控
+    func stopAllPOIMonitoring() {
+        for region in locationManager.monitoredRegions {
+            if region.identifier.hasPrefix(poiRegionPrefix) {
+                locationManager.stopMonitoring(for: region)
+            }
+        }
+        print("🔕 已停止所有 POI 围栏监控")
+    }
+
     /// 停止定位
     func stopUpdatingLocation() {
         print("📍 停止获取用户位置")
@@ -809,5 +867,32 @@ extension LocationManager: CLLocationManagerDelegate {
         }
 
         print("❌ 定位失败: \(error.localizedDescription)")
+    }
+
+    // MARK: - 地理围栏回调
+
+    /// 进入地理围栏区域时调用
+    func locationManager(_ manager: CLLocationManager, didEnterRegion region: CLRegion) {
+        print("🎯 进入围栏区域: \(region.identifier)")
+
+        // 检查是否是 POI 围栏
+        if region.identifier.hasPrefix("poi_") {
+            let poiId = String(region.identifier.dropFirst(4))  // 去掉 "poi_" 前缀
+            print("📍 进入 POI 围栏，ID: \(poiId)")
+
+            // 通知 ExplorationManager
+            Task { @MainActor in
+                ExplorationManager.shared.handlePOIEntered(poiId: poiId)
+            }
+        }
+    }
+
+    /// 地理围栏监控失败时调用
+    func locationManager(_ manager: CLLocationManager, monitoringDidFailFor region: CLRegion?, withError error: Error) {
+        if let region = region {
+            print("❌ 围栏监控失败: \(region.identifier) - \(error.localizedDescription)")
+        } else {
+            print("❌ 围栏监控失败: \(error.localizedDescription)")
+        }
     }
 }

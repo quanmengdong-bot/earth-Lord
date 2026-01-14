@@ -54,6 +54,38 @@ struct CoordinateConverter {
         return coordinates.map { wgs84ToGcj02($0) }
     }
 
+    /// GCJ-02 坐标转 WGS-84 坐标（逆向转换，用于地理围栏）
+    /// - Parameter coordinate: GCJ-02 坐标（国测局加密坐标）
+    /// - Returns: WGS-84 坐标（GPS 原始坐标）
+    static func gcj02ToWgs84(_ coordinate: CLLocationCoordinate2D) -> CLLocationCoordinate2D {
+        // 判断是否在中国境外，境外不做偏移
+        if outOfChina(coordinate) {
+            return coordinate
+        }
+
+        // 使用迭代法进行逆向转换（精度更高）
+        var wgsLat = coordinate.latitude
+        var wgsLon = coordinate.longitude
+
+        // 迭代次数
+        let iterations = 10
+
+        for _ in 0..<iterations {
+            let gcj = wgs84ToGcj02(CLLocationCoordinate2D(latitude: wgsLat, longitude: wgsLon))
+            wgsLat += coordinate.latitude - gcj.latitude
+            wgsLon += coordinate.longitude - gcj.longitude
+        }
+
+        return CLLocationCoordinate2D(latitude: wgsLat, longitude: wgsLon)
+    }
+
+    /// 批量转换 GCJ-02 坐标数组为 WGS-84
+    /// - Parameter coordinates: GCJ-02 坐标数组
+    /// - Returns: WGS-84 坐标数组
+    static func gcj02ToWgs84(_ coordinates: [CLLocationCoordinate2D]) -> [CLLocationCoordinate2D] {
+        return coordinates.map { gcj02ToWgs84($0) }
+    }
+
     // MARK: - 私有方法
 
     /// 判断坐标是否在中国境外

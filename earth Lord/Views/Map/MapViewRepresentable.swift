@@ -40,6 +40,9 @@ struct MapViewRepresentable: UIViewRepresentable {
     /// Day18: 领地版本号（用于触发更新）
     var territoriesVersion: Int
 
+    /// Day22: 附近的 POI 列表
+    var nearbyPOIs: [GamePOI]
+
     // MARK: - UIViewRepresentable Methods
 
     /// 创建 MKMapView
@@ -111,6 +114,37 @@ struct MapViewRepresentable: UIViewRepresentable {
         // ⭐ Day18: 绘制所有领地
         print("🗺️ updateUIView: territories.count = \(territories.count), version = \(territoriesVersion)")
         drawTerritories(on: uiView)
+
+        // ⭐ Day22: 更新 POI 标记
+        updatePOIAnnotations(on: uiView)
+    }
+
+    // MARK: - Day22: POI 标记
+
+    /// 更新 POI 标记
+    private func updatePOIAnnotations(on mapView: MKMapView) {
+        // 移除旧的 POI 标记
+        let existingPOIAnnotations = mapView.annotations.filter { $0 is POIAnnotation }
+        mapView.removeAnnotations(existingPOIAnnotations)
+
+        // 如果没有 POI，直接返回
+        guard !nearbyPOIs.isEmpty else {
+            print("📍 Day22: nearbyPOIs 为空，跳过添加标记")
+            return
+        }
+
+        print("📍 Day22: 准备添加 \(nearbyPOIs.count) 个 POI 标记")
+
+        // 添加新的 POI 标记
+        for poi in nearbyPOIs {
+            // ⭐ 注意：MKLocalSearch 在中国返回的坐标已经是 GCJ-02 格式
+            // 不需要再进行坐标转换，直接使用即可
+            let annotation = POIAnnotation(poi: poi, coordinate: poi.coordinate)
+            mapView.addAnnotation(annotation)
+            print("   📌 添加 POI: \(poi.name) at (\(String(format: "%.4f", poi.coordinate.latitude)), \(String(format: "%.4f", poi.coordinate.longitude)))")
+        }
+
+        print("✅ Day22: 已添加 \(nearbyPOIs.count) 个 POI 标记到地图")
     }
 
     /// 创建 Coordinator（处理 MKMapViewDelegate 回调）
@@ -354,5 +388,80 @@ struct MapViewRepresentable: UIViewRepresentable {
 
             return MKOverlayRenderer(overlay: overlay)
         }
+
+        /// Day22: 渲染 POI 标记
+        func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
+            // 用户位置使用默认蓝点
+            if annotation is MKUserLocation {
+                return nil
+            }
+
+            // POI 标记
+            if let poiAnnotation = annotation as? POIAnnotation {
+                let identifier = "POIAnnotation"
+                var annotationView = mapView.dequeueReusableAnnotationView(withIdentifier: identifier) as? MKMarkerAnnotationView
+
+                if annotationView == nil {
+                    annotationView = MKMarkerAnnotationView(annotation: poiAnnotation, reuseIdentifier: identifier)
+                    annotationView?.canShowCallout = true
+                } else {
+                    annotationView?.annotation = poiAnnotation
+                }
+
+                // 设置标记样式
+                let poi = poiAnnotation.poi
+                annotationView?.glyphImage = UIImage(systemName: poi.type.iconName)
+                annotationView?.markerTintColor = poiMarkerColor(for: poi)
+                annotationView?.titleVisibility = .visible
+
+                // 已搜刮的 POI 显示为灰色
+                if poi.isScavenged {
+                    annotationView?.markerTintColor = .gray
+                    annotationView?.alpha = 0.6
+                } else {
+                    annotationView?.alpha = 1.0
+                }
+
+                return annotationView
+            }
+
+            return nil
+        }
+
+        /// POI 标记颜色
+        private func poiMarkerColor(for poi: GamePOI) -> UIColor {
+            switch poi.type {
+            case .hospital, .pharmacy:
+                return .systemRed
+            case .gasStation:
+                return .systemOrange
+            case .restaurant, .cafe:
+                return .systemYellow
+            case .store, .convenience, .supermarket:
+                return .systemBlue
+            }
+        }
+    }
+}
+
+// MARK: - Day22: POI Annotation
+
+/// POI 地图标记
+class POIAnnotation: NSObject, MKAnnotation {
+    let poi: GamePOI
+    let coordinate: CLLocationCoordinate2D
+
+    var title: String? {
+        return poi.name
+    }
+
+    var subtitle: String? {
+        return poi.type.ruinDescription
+    }
+
+    init(poi: GamePOI, coordinate: CLLocationCoordinate2D) {
+        self.poi = poi
+        self.coordinate = coordinate
+        super.init()
     }
 }
